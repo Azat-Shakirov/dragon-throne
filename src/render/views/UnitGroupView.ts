@@ -81,6 +81,9 @@ export class UnitGroupView {
         fontFamily: 'system-ui, sans-serif',
         fontSize: 11,
         fill: 0xffffff,
+        // Dark stroke keeps the in-flight count legible on bright
+        // biomes (snow, desert). Width tuned for the small fontSize.
+        stroke: { color: 0x000000, width: 2, alpha: 0.85 },
         fontWeight: '600',
       },
     });

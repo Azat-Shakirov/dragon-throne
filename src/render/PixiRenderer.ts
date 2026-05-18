@@ -154,6 +154,9 @@ export class PixiRenderer {
         fontFamily: 'system-ui, sans-serif',
         fontSize: 36,
         fill: 0xffffff,
+        // Dark stroke keeps the win/lose banner legible against any
+        // biome (snow especially). Scaled to fontSize 36.
+        stroke: { color: 0x000000, width: 5, alpha: 0.9 },
         fontWeight: '700',
         align: 'center',
       },

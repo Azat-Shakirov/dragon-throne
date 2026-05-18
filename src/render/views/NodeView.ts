@@ -124,6 +124,9 @@ export class NodeView {
         fontFamily: 'system-ui, sans-serif',
         fontSize: 16,
         fill: 0xffffff,
+        // Dark stroke keeps the white digits legible on bright biome
+        // floors (snow, desert) — without it the count vanishes.
+        stroke: { color: 0x000000, width: 3, alpha: 0.85 },
         fontWeight: '600',
         align: 'center',
       },
