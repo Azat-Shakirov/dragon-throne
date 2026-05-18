@@ -56,6 +56,12 @@ $RECYCLE.BIN/
 # Project artifacts
 .claude/session-end.log
 
+# Local audio placeholders. The MP3 the author dropped into sounds/
+# is a third-party track used for local playtest only; not licensed
+# for redistribution. Real audio assets will land under a different
+# path once they're cleared.
+sounds/
+
 # Private — never commit to public repo.
 # Spec, design, asset plan, design-interview summary, agent-instruction
 # file, and session log are kept local only. Most are mirrored to a

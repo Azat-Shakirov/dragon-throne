@@ -34,7 +34,7 @@ export function Settings() {
           onChange={setSfxVolume}
         />
         <p style={{ color: '#7a8090', fontSize: 12, marginTop: 8 }}>
-          Audio engine wires up in Phase 6. Your preferences are saved.
+          Music plays on a loop; SFX wires up later.
         </p>
         <hr style={{ border: 'none', borderTop: '1px solid rgba(120, 140, 180, 0.18)', margin: '20px 0' }} />
         {!confirming ? (
