@@ -172,13 +172,10 @@ export const LevelSchema = z.object({
   // Optional persistent banner shown across the top of the game view.
   // Plain string — purely cosmetic, no engine semantics.
   objective: z.string().nullable().optional(),
-  // v2.8.0 challenge-tier (L31+): if true, LevelSelect's faction picker
-  // overrides the designer-set player.faction. Renamed from
-  // `letPlayerChooseLiquid` pre-v2.8.0.
-  letPlayerChooseFaction: z.boolean().optional(),
-  // v2.8.0 (deferred to v1.1 UI): if true, LevelSelect lets the player
-  // pick the archetype. Designer-locked otherwise (the JSON's archetype
-  // field always wins for MVP).
+  // v2.9.0 challenge-tier (L31+): if true, LevelSelect's archetype
+  // picker overrides the designer-set player.archetype AND forces the
+  // human player's faction to 'azure' (the user always plays blue).
+  // Replaces the v2.8.0 `letPlayerChooseFaction` flag.
   letPlayerChooseArchetype: z.boolean().optional(),
   introducesNodeTypes: z.array(z.string()),
   // v2.8.0 — renamed from introducesLiquids.

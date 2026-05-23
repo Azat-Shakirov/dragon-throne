@@ -154,5 +154,5 @@
     ]
   },
   "introducesFactions": [],
-  "letPlayerChooseFaction": true
+  "letPlayerChooseArchetype": true
 }

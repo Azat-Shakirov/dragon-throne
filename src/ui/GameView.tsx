@@ -15,8 +15,8 @@ import { NodeInfoPanel } from './NodeInfoPanel';
 import { TutorialOverlay } from './TutorialOverlay';
 import { ObjectiveBanner } from './ObjectiveBanner';
 import type { TutorialDef } from '../engine/content/ContentLibrary';
-import type { FactionId, NodeId } from '../types';
-import type { LevelDef } from '../engine/content/ContentLibrary';
+import type { NodeId } from '../types';
+import type { ArchetypeId, LevelDef } from '../engine/content/ContentLibrary';
 import { useHudStore } from '../store/hudStore';
 import { useSessionStore } from '../store/sessionStore';
 import { useProgressStore } from '../store/progressStore';
@@ -106,14 +106,16 @@ export function GameView({ levelId }: GameViewProps) {
         if (!baseLevel) {
           throw new Error(`Level ${levelId} not found.`);
         }
-        // Faction override is gated on the level being a challenge-tier
-        // level (letPlayerChooseFaction). On L1-30 we always honor the
-        // designer's choice and ignore the LevelSelect picker.
-        const overrideFaction = baseLevel.letPlayerChooseFaction
-          ? useSessionStore.getState().playerStartFaction
+        // Archetype override is gated on the level being a challenge-tier
+        // level (letPlayerChooseArchetype). On L1-30 we always honor the
+        // designer's choice and ignore the LevelSelect picker. When the
+        // override fires it also forces the human player's faction to
+        // 'azure' — the user always plays blue on challenge levels.
+        const overrideArchetype = baseLevel.letPlayerChooseArchetype
+          ? useSessionStore.getState().playerStartArchetype
           : null;
-        const level = overrideFaction
-          ? applyPlayerFactionOverride(baseLevel, overrideFaction)
+        const level = overrideArchetype
+          ? applyPlayerArchetypeOverride(baseLevel, overrideArchetype)
           : baseLevel;
         engine = new GameEngine(level, content);
         engineRef = engine;
@@ -286,27 +288,16 @@ function nextLevelId(current: number, available: number[]): number | null {
   return available[idx + 1] ?? null;
 }
 
-// Dev playtest helper: returns a shallow-cloned LevelDef whose human
-// player's `faction` is swapped to `factionId`. buildWorldFromLevel
-// propagates the override to every node the human owns (per-player
-// faction model). Enemy + neutral nodes are left alone — the override
-// is for feeling out the player's own faction. Auto-conversion on
-// capture (§4.5) still applies as usual once the player takes enemy
-// territory.
-//
-// v2.8.7-followup (later): banner color and unit archetype are now
-// independent dimensions. A crimson banner can be either an Archer or
-// a Knight depending on what the level was designed to teach. The
-// runtime faction picker therefore only swaps the player's faction
-// (color, team ring, banner sprites); the archetype stays whatever
-// the level designer set — i.e., what the player is meant to PLAY AS
-// for that level. If a future archetype picker UI lands, it will be
-// surfaced separately (LevelDef.letPlayerChooseArchetype).
-function applyPlayerFactionOverride(level: LevelDef, factionId: FactionId): LevelDef {
+// v2.9.0: returns a shallow-cloned LevelDef whose human player's
+// `archetype` is swapped to `archetypeId` AND whose `faction` is forced
+// to 'azure' (the user always plays blue on challenge-tier levels).
+// buildWorldFromLevel propagates the faction override to every node the
+// human owns; enemy + neutral nodes are left alone.
+function applyPlayerArchetypeOverride(level: LevelDef, archetypeId: ArchetypeId): LevelDef {
   return {
     ...level,
     players: level.players.map((p) =>
-      p.type === 'human' ? { ...p, faction: factionId } : p,
+      p.type === 'human' ? { ...p, archetype: archetypeId, faction: 'azure' } : p,
     ),
   };
 }

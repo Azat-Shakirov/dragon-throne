@@ -1,18 +1,35 @@
+// LevelSelect — level grid with the challenge-tier archetype picker
+// (v2.9.0). The picker chooses the player's unit type (Infantry /
+// Archer / Knight / Cavalry / Mage), not banner color. Selecting any
+// archetype also forces the human player's faction to 'azure' — the
+// user always plays blue. Reset = fall back to the designer's choice.
+
 import { useMemo } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 import { useProgressStore, isLevelUnlocked } from '../store/progressStore';
 import { loadContent } from '../engine/content/ContentLoader';
+import { playSfx } from '../audio/sfxPlayer';
+import { ArchetypeIcon } from './archetypeIcons';
 import { buttonStyle, linkStyle, screenStyle, titleStyle } from './menuStyles';
-import type { FactionId } from '../types';
+import type { ArchetypeId } from '../engine/content/ContentLibrary';
 
 const STAR_FILLED = '★';
 const STAR_EMPTY = '☆';
 
+// Deterministic chip order. Hard-coded rather than derived from
+// Object.keys(content.archetypes) so no accidental neutral / future
+// non-playable archetype can sneak into the picker.
+const ARCHETYPE_ORDER: ArchetypeId[] = ['infantry', 'archer', 'knight', 'cavalry', 'mage'];
+
+// Azure (the user's locked color on challenge levels) — drives the
+// selected-chip border + tint.
+const AZURE_HEX = '#3da9fc';
+
 export function LevelSelect() {
   const navigate = useSessionStore((s) => s.navigate);
   const startLevel = useSessionStore((s) => s.startLevel);
-  const playerStartFaction = useSessionStore((s) => s.playerStartFaction);
-  const setPlayerStartFaction = useSessionStore((s) => s.setPlayerStartFaction);
+  const playerStartArchetype = useSessionStore((s) => s.playerStartArchetype);
+  const setPlayerStartArchetype = useSessionStore((s) => s.setPlayerStartArchetype);
   const completedLevels = useProgressStore((s) => s.completedLevels);
 
   const content = useMemo(() => loadContent(), []);
@@ -30,14 +47,10 @@ export function LevelSelect() {
     () => content.levels[0] !== undefined,
     [content.levels],
   );
-  const factionIds = useMemo(
-    () => Object.keys(content.factions).sort(),
-    [content.factions],
-  );
   // Only show the challenge-tier picker once at least one level with
-  // letPlayerChooseFaction exists in the campaign.
+  // letPlayerChooseArchetype exists in the campaign.
   const hasChallengeLevels = useMemo(
-    () => sortedIds.some((id) => content.levels[id]?.letPlayerChooseFaction === true),
+    () => sortedIds.some((id) => content.levels[id]?.letPlayerChooseArchetype === true),
     [sortedIds, content.levels],
   );
 
@@ -46,35 +59,42 @@ export function LevelSelect() {
       <div style={{ ...titleStyle, fontSize: 36, marginBottom: 24 }}>Choose a Level</div>
       {hasChallengeLevels && (
         <div style={pickerRowStyle}>
-          <span style={pickerLabelStyle}>Faction for challenge levels (L31-40)</span>
-          {factionIds.map((fid) => {
-            const fac = content.factions[fid as FactionId]!;
-            const selected = (playerStartFaction ?? null) === fid;
+          <span style={pickerLabelStyle}>Unit type for challenge levels (L31-40)</span>
+          {ARCHETYPE_ORDER.map((aid) => {
+            const arch = content.archetypes[aid];
+            if (!arch) return null;
+            const selected = playerStartArchetype === aid;
             return (
               <button
-                key={fid}
-                onClick={() => setPlayerStartFaction(selected ? null : (fid as FactionId))}
+                key={aid}
+                onClick={() => {
+                  playSfx('click');
+                  setPlayerStartArchetype(selected ? null : aid);
+                }}
                 style={{
                   ...chipStyle,
-                  borderColor: selected ? fac.color : 'rgba(255,255,255,0.15)',
-                  background: selected ? `${fac.color}20` : 'rgba(255,255,255,0.04)',
+                  borderColor: selected ? AZURE_HEX : 'rgba(255,255,255,0.15)',
+                  background: selected ? `${AZURE_HEX}20` : 'rgba(255,255,255,0.04)',
+                  color: selected ? AZURE_HEX : '#e8e8e8',
                 }}
-                title={fac.description}
+                title={arch.description}
               >
-                <span style={{ ...chipSwatchStyle, background: fac.color }} />
-                <span>{fac.name}</span>
+                <span style={iconWrapStyle}>
+                  <ArchetypeIcon id={aid} size={18} />
+                </span>
+                <span>{arch.name}</span>
               </button>
             );
           })}
           <button
-            onClick={() => setPlayerStartFaction(null)}
+            onClick={() => { playSfx('click'); setPlayerStartArchetype(null); }}
             style={{
               ...chipStyle,
               padding: '6px 10px',
-              opacity: playerStartFaction === null ? 0.45 : 1,
-              cursor: playerStartFaction === null ? 'default' : 'pointer',
+              opacity: playerStartArchetype === null ? 0.45 : 1,
+              cursor: playerStartArchetype === null ? 'default' : 'pointer',
             }}
-            disabled={playerStartFaction === null}
+            disabled={playerStartArchetype === null}
           >
             Reset
           </button>
@@ -98,7 +118,7 @@ export function LevelSelect() {
             <button
               key={id}
               disabled={!unlocked}
-              onClick={() => unlocked && startLevel(id)}
+              onClick={() => { playSfx('click'); if (unlocked) startLevel(id); }}
               style={{
                 ...buttonStyle,
                 minWidth: 0,
@@ -124,12 +144,12 @@ export function LevelSelect() {
       {import.meta.env.DEV && hasSandbox && (
         <button
           style={{ ...linkStyle, color: '#9be29b', marginTop: 8 }}
-          onClick={() => startLevel(0)}
+          onClick={() => { playSfx('click'); startLevel(0); }}
         >
           ⚙ Sandbox (L0) — sprite preview
         </button>
       )}
-      <button style={linkStyle} onClick={() => navigate('menu')}>← back</button>
+      <button style={linkStyle} onClick={() => { playSfx('click'); navigate('menu'); }}>← back</button>
     </div>
   );
 }
@@ -166,10 +186,10 @@ const chipStyle: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-const chipSwatchStyle: React.CSSProperties = {
-  display: 'inline-block',
-  width: 12,
-  height: 12,
-  borderRadius: 2,
-  border: '1px solid rgba(255,255,255,0.18)',
+const iconWrapStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 18,
+  height: 18,
 };

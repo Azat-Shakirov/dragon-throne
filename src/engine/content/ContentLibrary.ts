@@ -144,11 +144,10 @@ export interface LevelDef {
   tutorial?: TutorialDef | null;
   // Phase 5: persistent objective banner across the top of the game view.
   objective?: string | null;
-  // v2.8.0 challenge tier: when true, LevelSelect's faction picker
-  // overrides the designer-set player.faction.
-  letPlayerChooseFaction?: boolean;
-  // v2.8.0 (UI deferred to v1.1): when true, LevelSelect lets the player
-  // pick the archetype. Designer-locked otherwise.
+  // v2.9.0 challenge tier: when true, LevelSelect's archetype picker
+  // overrides the designer-set player.archetype AND forces the human
+  // player's faction to 'azure'. Replaces the v2.8.0 letPlayerChooseFaction
+  // flag (faction is no longer a player-facing pick).
   letPlayerChooseArchetype?: boolean;
   introducesNodeTypes: string[];
   // v2.8.0 — renamed from introducesLiquids.

@@ -275,7 +275,12 @@ export class GameEngine {
         // Freeze (per user spec patch): pure neutralization. Target
         // becomes neutral; units preserved. Recruit-but-to-neutral.
         // Cancels target's concoction since neutral nodes don't concoct.
+        // v2.9.0: also reset faction to 'neutral' so NodeView's
+        // getNodeTexture(type, faction) returns the gray sprite. Without
+        // this, ownerId clears but faction lags and the building keeps
+        // rendering in the prior owner's color.
         target.ownerId = null;
+        target.faction = 'neutral';
         target.spellQueue = null;
         target.productionProgress = 0;
         break;
@@ -296,7 +301,12 @@ export class GameEngine {
         // v2.8.0 — renamed from recruit; mechanic unchanged. Target
         // flips to caster; units preserved; ends starve; cancels
         // target's concoction.
+        // v2.9.0: also set faction to the caster's so the building
+        // adopts the new owner's banner sprite immediately. Without
+        // this, ownerId flips but faction stays the prior owner's
+        // and the visual reads wrong.
         target.ownerId = lab.ownerId;
+        target.faction = lab.faction;
         target.spellQueue = null;
         target.starveStacks = [];
         break;
