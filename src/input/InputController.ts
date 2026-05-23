@@ -94,6 +94,20 @@ export class InputController {
     private readonly canvas: HTMLCanvasElement,
     private readonly engine: GameEngine,
     private readonly session: SessionState,
+    // v2.9.1: PixiRenderer scales+centers the world container to fit
+    // the host; this callback inverts that transform so the engine
+    // continues to see clicks in world coords. Optional so existing
+    // tests / sandboxes that construct an InputController without a
+    // renderer don't break.
+    private readonly screenToWorld?: (x: number, y: number) => Vec2,
+    // v2.9.2: optional callback to spawn a spell-effect overlay at
+    // world coords. Fires alongside the spell SFX. Optional for the
+    // same test/sandbox-compat reason as screenToWorld above.
+    private readonly spawnSpellOverlay?: (
+      spellId: string,
+      worldX: number,
+      worldY: number,
+    ) => void,
   ) {
     this.handlePointerDown = (e: PointerEvent) => this.onPointerDown(e);
     this.handlePointerMove = (e: PointerEvent) => this.onPointerMove(e);
@@ -150,6 +164,12 @@ export class InputController {
         const result = this.engine.castSpell(labId, targetId);
         if (result.ok && spellId !== null) {
           playSfx(spellSfxFor(spellId));
+          if (this.spawnSpellOverlay) {
+            const target = this.engine.world.nodes.get(targetId);
+            if (target) {
+              this.spawnSpellOverlay(spellId, target.position.x, target.position.y);
+            }
+          }
         }
       }
       this.session.targetingFromLabId = null;
@@ -409,6 +429,12 @@ export class InputController {
     const result = this.engine.castSpell(source.id, targetId);
     if (result.ok) {
       playSfx(spellSfxFor(spellId));
+      if (this.spawnSpellOverlay) {
+        const target = this.engine.world.nodes.get(targetId);
+        if (target) {
+          this.spawnSpellOverlay(spellId, target.position.x, target.position.y);
+        }
+      }
     }
     return 'cast';
   }
@@ -475,12 +501,20 @@ export class InputController {
 
   // ── Helpers ───────────────────────────────────────────────────────
 
-  // v2.7.6: simple canvas-CSS → world coords. The auto-zoom approach
-  // (v2.7.5) is gone; the world stays 1:1, individual elements scale
-  // via world.visualScale. No transform math here means no cursor drift.
+  // v2.9.1: canvas-CSS → world coords, with optional inverse of the
+  // renderer's fit-to-host transform. Without `screenToWorld`,
+  // canvas-CSS coords are returned as-is (v2.7.6 behavior, used by
+  // tests / sandboxes); with it, the renderer's letterbox offset +
+  // uniform scale are inverted so the engine continues to see clicks
+  // in level-pixel coords regardless of viewport size.
   private localCoords(e: PointerEvent): Vec2 {
     const rect = this.canvas.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const canvasX = e.clientX - rect.left;
+    const canvasY = e.clientY - rect.top;
+    if (this.screenToWorld) {
+      return this.screenToWorld(canvasX, canvasY);
+    }
+    return { x: canvasX, y: canvasY };
   }
 
   private pickNodeAt(x: number, y: number): NodeId | null {

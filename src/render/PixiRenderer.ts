@@ -2,7 +2,7 @@
 // Reads from World + SessionState, never writes. (§3.1, §10)
 //
 // Layered stage (§10.1):
-//   1. Background          — dark canvas (Phase 1)
+//   1. Background          — biome floor (Phase 4) or dark canvas
 //   2. Walls               — static terrain polylines (Phase 3)
 //   3. Connection hints    — drag/hover line from selected source(s) to target
 //   4. Nodes               — NodeView containers
@@ -11,10 +11,21 @@
 //   7. Unit groups         — UnitGroupView containers
 //   8. Spell effects       — Phase 2
 //   9. Selection box       — dashed rectangle while box-selecting
-//  10. HUD overlay         — tick counter / status string
+//  10. HUD overlay         — win/lose banner only (the v2.7-era
+//                            tick+seconds text was removed in v2.9.1;
+//                            elapsed time now lives in the React
+//                            HudTimer overlay)
+//
+// v2.9.1: the world container (`worldRoot`) is scaled and translated
+// each frame via `fitWorldToHost()` so the level (declared in raw
+// pixels in its JSON) fits the host element while preserving aspect
+// ratio. `InputController` uses `screenToWorld()` to invert that
+// transform — fixing the cursor-drift bug that originally retired
+// the v2.7.5 auto-zoom branch in v2.7.6.
 
 import { Application, Container, Graphics, Sprite, Text } from 'pixi.js';
 import type { World } from '../engine/World';
+import type { Vec2 } from '../types';
 import type { ContentLibrary } from '../engine/content/ContentLibrary';
 import type { TowerShot } from '../engine/systems/TowerInterceptSystem';
 import { pathCacheKey } from '../engine/PathSystem';
@@ -26,7 +37,16 @@ import type { SessionState } from './SessionState';
 import { loadNodeTextures } from './sprites/nodeSprites';
 import { loadUnitTextures } from './sprites/unitSprites';
 import { loadBiomeTextures, getBiomeTexture } from './sprites/biomeSprites';
+import { loadWallTextures, getWallTexture } from './sprites/wallSprites';
+import {
+  loadProjectileTextures,
+  getProjectileTexture,
+  projectileForTowerLevel,
+} from './sprites/projectileSprites';
+import { loadEffectTextures, getDeathPuffTexture } from './sprites/effectSprites';
+import { loadSpellTextures, getSpellTexture } from './sprites/spellSprites';
 import { playSfx } from '../audio/sfxPlayer';
+import type { FactionId } from '../types';
 
 interface ClickRipple {
   x: number;
@@ -41,11 +61,42 @@ interface RenderedBeam {
   toY: number;
   color: number;
   birthMs: number;
+  // v2.9.2: projectile texture (resolved from the firing tower's level).
+  // When null, the beam renders as the v2.7-era solid-color line.
+  projectile: ReturnType<typeof getProjectileTexture> | null;
+}
+
+interface DeathPuff {
+  x: number;
+  y: number;
+  birthMs: number;
+  texture: ReturnType<typeof getDeathPuffTexture>;
+  sprite: Sprite;
+}
+
+interface ActiveSpellOverlay {
+  spellId: string;
+  worldX: number;
+  worldY: number;
+  birthMs: number;
+  sprite: Sprite;
 }
 
 const RIPPLE_LIFE_MS = 600;
 const RIPPLE_MAX_RADIUS = 28;
 const BEAM_LIFE_MS = 220;
+const DEATH_PUFF_LIFE_MS = 700;
+// v2.9.3: sized to read as one-unit-worth of debris. UnitGroupView's
+// SPRITE_BASE_DISPLAY_HEIGHT is 30 px at visualScale 1 — a death-puff
+// at 30 px height sits next to the unit at parity scale, which is the
+// "unit just died here" read the visual wants.
+const DEATH_PUFF_BASE_SIZE_PX = 30;
+// v2.9.3: projectiles render small — clearly a weapon-not-a-vehicle.
+// Arrow display height 14 px (about half of a unit sprite); cannonball
+// scales by aspect to come out roughly square at the same height.
+const PROJECTILE_BASE_DISPLAY_HEIGHT = 14;
+const SPELL_OVERLAY_LIFE_MS = 1100;
+const SPELL_OVERLAY_BASE_SIZE_PX = 120;
 
 export class PixiRenderer {
   readonly app: Application;
@@ -73,8 +124,15 @@ export class PixiRenderer {
   private readonly beamGraphics: Graphics;
   private readonly wallsGraphics: Graphics;
   private readonly selectionBoxView: SelectionBoxView;
-  private readonly hudText: Text;
   private readonly statusText: Text;
+
+  // v2.9.1: world-fit transform — uniform scale + centering offset
+  // applied to `worldRoot` each frame so the level (declared in raw
+  // px in its JSON) fits the host area (which is sized to the
+  // viewport). Preserves aspect ratio; letterboxes if needed.
+  private worldFitScale = 1;
+  private worldFitOffsetX = 0;
+  private worldFitOffsetY = 0;
 
   // Walls are static per level — redraw only when the level id changes.
   private lastWallsLevelId: number | null = null;
@@ -89,6 +147,12 @@ export class PixiRenderer {
   private readonly unitViews = new Map<string, UnitGroupView>();
   private readonly ripples: ClickRipple[] = [];
   private readonly beams: RenderedBeam[] = [];
+  private readonly deathPuffs: DeathPuff[] = [];
+  private readonly activeSpellOverlays: ActiveSpellOverlay[] = [];
+  // Wall sprite per biome — placed once at the polyline's bbox and
+  // retained across frames (walls are static per level). Cleared on
+  // level change inside syncWalls.
+  private readonly wallSprites: Sprite[] = [];
   // Dedupe key per shot — `${firedAtTick}-${fromNodeId}` is unique
   // because a single tower fires at most once per tick.
   private ingestedShotKeys = new Set<string>();
@@ -141,16 +205,10 @@ export class PixiRenderer {
     this.selectionBoxView = new SelectionBoxView();
     this.boxLayer.addChild(this.selectionBoxView.graphic);
 
-    this.hudText = new Text({
-      text: '',
-      style: {
-        fontFamily: 'monospace',
-        fontSize: 13,
-        fill: 0x888888,
-      },
-    });
-    this.hudText.position.set(12, 10);
-    this.hudLayer.addChild(this.hudText);
+    // v2.9.1: removed the Pixi `hudText` (level/tick/seconds string).
+    // A compact React clock chip (`HudTimer`) renders the elapsed
+    // seconds instead. Pixi HUD now owns only the win/lose status
+    // banner.
 
     this.statusText = new Text({
       text: '',
@@ -179,7 +237,15 @@ export class PixiRenderer {
       resolution: window.devicePixelRatio,
     });
     host.appendChild(app.canvas);
-    await Promise.all([loadNodeTextures(), loadUnitTextures(), loadBiomeTextures()]);
+    await Promise.all([
+      loadNodeTextures(),
+      loadUnitTextures(),
+      loadBiomeTextures(),
+      loadWallTextures(),
+      loadProjectileTextures(),
+      loadEffectTextures(),
+      loadSpellTextures(),
+    ]);
     return new PixiRenderer(app, host, content);
   }
 
@@ -190,6 +256,7 @@ export class PixiRenderer {
     nowMs: number,
     recentTowerShots: ReadonlyArray<TowerShot> = [],
   ): void {
+    this.fitWorldToHost(world);
     this.syncBiome(world);
     this.syncWalls(world);
     this.syncNodes(world, session, nowMs, alpha);
@@ -197,7 +264,9 @@ export class PixiRenderer {
     this.drawHints(world, session);
     this.drawTowerRanges(world, session);
     this.ingestTowerShots(recentTowerShots, world, nowMs);
-    this.drawTowerBeams(nowMs);
+    this.drawTowerBeams(nowMs, world);
+    this.drawDeathPuffs(nowMs);
+    this.drawSpellOverlays(nowMs);
     this.selectionBoxView.update(session.boxSelect);
     this.drawRipples(nowMs);
     this.updateHud(world);
@@ -238,27 +307,71 @@ export class PixiRenderer {
   }
 
   // Walls are static per level — only redraw when the level changes.
+  // v2.9.2: when the biome has a registered wall sprite (grass, desert),
+  // bbox-place the sprite over each wall polyline instead of stroking
+  // the line. Biomes without a sprite (snow, jungle, stone) fall
+  // through to the v2.7-era procedural stone-grey stroke + shadow +
+  // highlight pass. Engine wall math (PathSystem) is unchanged — the
+  // polyline is the source of truth for clearance.
   private syncWalls(world: World): void {
     if (this.lastWallsLevelId === world.level.id) return;
     this.lastWallsLevelId = world.level.id;
     this.wallsGraphics.clear();
+    // Tear down any wall sprites from the previous level.
+    for (const s of this.wallSprites) {
+      this.wallsLayer.removeChild(s);
+      s.destroy();
+    }
+    this.wallSprites.length = 0;
+
+    const wallTex = getWallTexture(world.level.map.background);
+
     for (const wall of world.walls) {
       if (wall.points.length < 2) continue;
-      // Soft drop shadow under the wall — adds presence on the dark bg.
+
+      if (wallTex) {
+        // Bbox placement: stretch the sprite to fit the polyline's
+        // bounding box (+ a small pad so the painterly edges don't
+        // visually clip at the engine's exact line). Engine clearance
+        // math is unaffected.
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const p of wall.points) {
+          if (p.x < minX) minX = p.x;
+          if (p.x > maxX) maxX = p.x;
+          if (p.y < minY) minY = p.y;
+          if (p.y > maxY) maxY = p.y;
+        }
+        const PAD = 14;
+        const bw = maxX - minX + PAD * 2;
+        const bh = maxY - minY + PAD * 2;
+        // A pure-horizontal or pure-vertical wall has zero extent on
+        // one axis; clamp to a minimum thickness so the sprite has
+        // visible area.
+        const w = Math.max(bw, 28);
+        const h = Math.max(bh, 28);
+        const sprite = new Sprite(wallTex);
+        sprite.x = minX - PAD;
+        sprite.y = minY - PAD;
+        sprite.width = w;
+        sprite.height = h;
+        this.wallsLayer.addChild(sprite);
+        this.wallSprites.push(sprite);
+        continue;
+      }
+
+      // Procedural fallback: stone-grey stroke with drop shadow + bevel.
       this.wallsGraphics.moveTo(wall.points[0]!.x, wall.points[0]!.y + 2);
       for (let i = 1; i < wall.points.length; i++) {
         this.wallsGraphics.lineTo(wall.points[i]!.x, wall.points[i]!.y + 2);
       }
       this.wallsGraphics.stroke({ color: 0x000000, width: 9, alpha: 0.45, cap: 'round', join: 'round' });
 
-      // Main wall body — stone grey.
       this.wallsGraphics.moveTo(wall.points[0]!.x, wall.points[0]!.y);
       for (let i = 1; i < wall.points.length; i++) {
         this.wallsGraphics.lineTo(wall.points[i]!.x, wall.points[i]!.y);
       }
       this.wallsGraphics.stroke({ color: 0x4a4a4a, width: 7, alpha: 1.0, cap: 'round', join: 'round' });
 
-      // Highlight pass — thin lighter centerline for a beveled look.
       this.wallsGraphics.moveTo(wall.points[0]!.x, wall.points[0]!.y);
       for (let i = 1; i < wall.points.length; i++) {
         this.wallsGraphics.lineTo(wall.points[i]!.x, wall.points[i]!.y);
@@ -322,6 +435,13 @@ export class PixiRenderer {
         ? world.players.find((p) => p.id === tower.ownerId)
         : undefined;
       const color = owner ? colorFromHex(owner.color) : 0xffffff;
+      // v2.9.2: resolve projectile sprite from the firing tower's level
+      // (1→arrow, 2→ballista-bolt, 3+→cannonball). When the sprite
+      // registry has the texture, drawTowerBeams will tween it from
+      // tower → target instead of drawing the legacy color beam.
+      const projectile = tower
+        ? getProjectileTexture(projectileForTowerLevel(tower.level))
+        : null;
       this.beams.push({
         fromX: shot.fromPos.x,
         fromY: shot.fromPos.y,
@@ -329,6 +449,7 @@ export class PixiRenderer {
         toY: shot.toPos.y,
         color,
         birthMs: nowMs,
+        projectile,
       });
     }
     // Bound the dedupe set so it doesn't grow forever during long sessions.
@@ -339,21 +460,80 @@ export class PixiRenderer {
     }
   }
 
-  private drawTowerBeams(nowMs: number): void {
+  // v2.9.2: projectile sprites tween from tower → target over the
+  // BEAM_LIFE_MS lifetime. Beams whose projectile texture is null
+  // (registry miss for that tower level) fall back to the v2.7-era
+  // colored line. Sprite is rotated to face direction of travel
+  // (cannonball still rotates — reads as tumbling, which is fine for
+  // a heavy cannonball).
+  private projectileSprites = new Map<number, Sprite>();
+  private beamSerial = 0;
+
+  private drawTowerBeams(nowMs: number, world: World): void {
     this.beamGraphics.clear();
+    const aliveKeys = new Set<number>();
+    // Scale projectile display so it tracks unit size on sparse levels
+    // (where world.visualScale > 1). Units render at SPRITE_BASE_DISPLAY_HEIGHT
+    // × visualScale; projectiles use PROJECTILE_BASE_DISPLAY_HEIGHT × the
+    // same multiplier so they read at the same on-screen size relative
+    // to units regardless of how zoomed-in the level is.
+    const targetH = PROJECTILE_BASE_DISPLAY_HEIGHT * world.visualScale;
     for (let i = this.beams.length - 1; i >= 0; i--) {
       const b = this.beams[i]!;
       const age = nowMs - b.birthMs;
       if (age > BEAM_LIFE_MS) {
+        // Tear down the per-beam sprite, if any.
+        const key = (b as { _serial?: number })._serial;
+        if (key !== undefined) {
+          const s = this.projectileSprites.get(key);
+          if (s) {
+            this.beamLayer.removeChild(s);
+            s.destroy();
+            this.projectileSprites.delete(key);
+          }
+        }
         this.beams.splice(i, 1);
         continue;
       }
       const t = age / BEAM_LIFE_MS;
-      const alpha = 1 - t;
-      this.beamGraphics
-        .moveTo(b.fromX, b.fromY)
-        .lineTo(b.toX, b.toY)
-        .stroke({ color: b.color, width: 2, alpha: alpha * 0.85 });
+      if (b.projectile) {
+        // Tween a sprite along the beam.
+        let serial = (b as { _serial?: number })._serial;
+        if (serial === undefined) {
+          serial = ++this.beamSerial;
+          (b as { _serial?: number })._serial = serial;
+          const sprite = new Sprite(b.projectile);
+          sprite.anchor.set(0.5);
+          const ratio = b.projectile.width / b.projectile.height;
+          sprite.height = targetH;
+          sprite.width = targetH * ratio;
+          this.beamLayer.addChild(sprite);
+          this.projectileSprites.set(serial, sprite);
+        }
+        const sprite = this.projectileSprites.get(serial)!;
+        const x = b.fromX + (b.toX - b.fromX) * t;
+        const y = b.fromY + (b.toY - b.fromY) * t;
+        sprite.position.set(x, y);
+        sprite.rotation = Math.atan2(b.toY - b.fromY, b.toX - b.fromX);
+        sprite.alpha = 1 - Math.max(0, t - 0.85) / 0.15;
+        aliveKeys.add(serial);
+      } else {
+        const alpha = 1 - t;
+        this.beamGraphics
+          .moveTo(b.fromX, b.fromY)
+          .lineTo(b.toX, b.toY)
+          .stroke({ color: b.color, width: 2, alpha: alpha * 0.85 });
+      }
+    }
+    // Garbage-collect any sprites whose beam was removed without
+    // hitting the explicit teardown branch (defensive — shouldn't
+    // happen but cheap to guard).
+    for (const [key, sprite] of this.projectileSprites) {
+      if (!aliveKeys.has(key)) {
+        this.beamLayer.removeChild(sprite);
+        sprite.destroy();
+        this.projectileSprites.delete(key);
+      }
     }
   }
 
@@ -411,6 +591,7 @@ export class PixiRenderer {
         // hostile = an enemy group lands on a human-owned node (alert cue).
         // AI-on-AI is silent so the audio channel stays useful as a
         // player-facing gameplay signal.
+        let hostile = false;
         if (world.humanPlayerId !== null) {
           if (view.ownerId === world.humanPlayerId) {
             playSfx('arrive_friendly');
@@ -418,12 +599,122 @@ export class PixiRenderer {
             const target = world.nodes.get(view.toNodeId);
             if (target && target.ownerId === world.humanPlayerId) {
               playSfx('arrive_hostile');
+              hostile = true;
             }
           }
+        }
+        // v2.9.2: spawn a faction-colored death-puff at the unit's
+        // last position when the disappearance reads as a hostile
+        // outcome — i.e. the group landed on a human-owned target
+        // (defenders die), or the group was destroyed before
+        // arriving (TowerInterceptSystem killed it). The latter is
+        // detected by checking whether the engine's tower-shot
+        // dedupe set saw a recent hit on this unit; for simplicity
+        // here we ALSO spawn a puff whenever a non-human group
+        // crosses into our territory and dies, OR whenever any
+        // group disappears at a friendly-target node where combat
+        // resolved (faction-mismatch crash). Concretely: spawn the
+        // puff at the disappearance position colored by the
+        // destroyed group's sourceFaction.
+        const target = world.nodes.get(view.toNodeId);
+        const destroyedByCombat = target && target.faction !== view.sourceFaction;
+        if (hostile || destroyedByCombat) {
+          this.spawnDeathPuff(
+            view.lastWorldX,
+            view.lastWorldY,
+            view.sourceFaction as FactionId,
+            performance.now(),
+            world.visualScale,
+          );
         }
         view.destroy();
         this.unitViews.delete(id);
       }
+    }
+  }
+
+  // v2.9.2: spawn a faction-colored death-puff sprite at world coords.
+  // Lifetime DEATH_PUFF_LIFE_MS; fades out + scales up slightly while
+  // alive. No-op if the faction has no registered texture (e.g. neutral
+  // — but neutral never sends units, so this branch shouldn't fire).
+  private spawnDeathPuff(
+    worldX: number,
+    worldY: number,
+    faction: FactionId,
+    nowMs: number,
+    visualScale: number,
+  ): void {
+    const tex = getDeathPuffTexture(faction);
+    if (!tex) return;
+    const sprite = new Sprite(tex);
+    sprite.anchor.set(0.5, 0.7); // anchor low so the cloud sits above and the pool grounds
+    // Scale with per-level visualScale so the puff stays at one-unit
+    // size on sparse levels (where units render larger).
+    const targetH = DEATH_PUFF_BASE_SIZE_PX * visualScale;
+    const ratio = tex.width / tex.height;
+    sprite.height = targetH;
+    sprite.width = targetH * ratio;
+    sprite.position.set(worldX, worldY);
+    this.particleLayer.addChild(sprite);
+    this.deathPuffs.push({ x: worldX, y: worldY, birthMs: nowMs, texture: tex, sprite });
+  }
+
+  private drawDeathPuffs(nowMs: number): void {
+    for (let i = this.deathPuffs.length - 1; i >= 0; i--) {
+      const p = this.deathPuffs[i]!;
+      const age = nowMs - p.birthMs;
+      if (age > DEATH_PUFF_LIFE_MS) {
+        this.particleLayer.removeChild(p.sprite);
+        p.sprite.destroy();
+        this.deathPuffs.splice(i, 1);
+        continue;
+      }
+      const t = age / DEATH_PUFF_LIFE_MS;
+      // Slight scale-up + alpha fade. Cloud rises a bit (negative Y).
+      const scale = 1.0 + t * 0.25;
+      p.sprite.scale.set(scale);
+      p.sprite.alpha = 1.0 - t;
+      p.sprite.y = p.y - t * 6;
+    }
+  }
+
+  // v2.9.2: spawn a transient spell-effect overlay at the target node.
+  // Called from outside (InputController) when a spell is cast; the
+  // overlay lifetime drives the visual without engine involvement.
+  spawnSpellOverlay(spellId: string, worldX: number, worldY: number, nowMs: number): void {
+    const tex = getSpellTexture(spellId as 'freeze' | 'starve' | 'sabotage');
+    if (!tex) return;
+    const sprite = new Sprite(tex);
+    sprite.anchor.set(0.5);
+    const targetH = SPELL_OVERLAY_BASE_SIZE_PX;
+    const ratio = tex.width / tex.height;
+    sprite.height = targetH;
+    sprite.width = targetH * ratio;
+    sprite.position.set(worldX, worldY);
+    sprite.alpha = 0;
+    this.beamLayer.addChild(sprite);
+    this.activeSpellOverlays.push({ spellId, worldX, worldY, birthMs: nowMs, sprite });
+  }
+
+  private drawSpellOverlays(nowMs: number): void {
+    for (let i = this.activeSpellOverlays.length - 1; i >= 0; i--) {
+      const o = this.activeSpellOverlays[i]!;
+      const age = nowMs - o.birthMs;
+      if (age > SPELL_OVERLAY_LIFE_MS) {
+        this.beamLayer.removeChild(o.sprite);
+        o.sprite.destroy();
+        this.activeSpellOverlays.splice(i, 1);
+        continue;
+      }
+      const t = age / SPELL_OVERLAY_LIFE_MS;
+      // Scale up + ease in (first 30%), hold (next 40%), fade out (last 30%).
+      let alpha = 0;
+      if (t < 0.3) alpha = t / 0.3;
+      else if (t < 0.7) alpha = 1;
+      else alpha = 1 - (t - 0.7) / 0.3;
+      const scale = 0.6 + t * 0.7;
+      o.sprite.alpha = alpha;
+      o.sprite.scale.set(scale);
     }
   }
 
@@ -545,10 +836,43 @@ export class PixiRenderer {
     }
   }
 
-  private updateHud(world: World): void {
-    const elapsedSec = (world.elapsedMs / 1000).toFixed(1);
-    this.hudText.text = `level: ${world.level.id} (${world.level.name})   tick: ${world.tick}   t: ${elapsedSec}s`;
+  // v2.9.1: scale the world container uniformly so the level's
+  // declared (width × height) fits the host element while preserving
+  // aspect ratio. Cheap to call every frame — Pixi's `resizeTo: host`
+  // already drives `renderer.width/height` to match the host's CSS
+  // size, so we just read those values and recompute the transform.
+  // Centered letterboxing keeps the level visually framed on any
+  // laptop aspect ratio.
+  private fitWorldToHost(world: World): void {
+    const w = this.app.renderer.width;
+    const h = this.app.renderer.height;
+    const mapW = world.level.map.width;
+    const mapH = world.level.map.height;
+    if (mapW <= 0 || mapH <= 0 || w <= 0 || h <= 0) return;
+    const scale = Math.min(w / mapW, h / mapH);
+    const offsetX = Math.round((w - mapW * scale) / 2);
+    const offsetY = Math.round((h - mapH * scale) / 2);
+    this.worldFitScale = scale;
+    this.worldFitOffsetX = offsetX;
+    this.worldFitOffsetY = offsetY;
+    this.worldRoot.scale.set(scale);
+    this.worldRoot.position.set(offsetX, offsetY);
+  }
 
+  // Inverse of fitWorldToHost — convert canvas-CSS coords (as reported
+  // by InputController.localCoords) back into the world coordinate
+  // system the engine uses. Input layer calls this so cursor maths
+  // remain identical to the v2.7.6 "no transform" branch from the
+  // engine's POV; the responsive fit is invisible to gameplay code.
+  screenToWorld(x: number, y: number): Vec2 {
+    const s = this.worldFitScale || 1;
+    return {
+      x: (x - this.worldFitOffsetX) / s,
+      y: (y - this.worldFitOffsetY) / s,
+    };
+  }
+
+  private updateHud(world: World): void {
     // Win/lose stinger fires once on the transition out of 'playing'.
     if (world.status !== this.lastWorldStatus) {
       if (this.lastWorldStatus === 'playing' && world.status === 'won') {

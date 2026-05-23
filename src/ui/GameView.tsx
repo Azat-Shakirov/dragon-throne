@@ -14,6 +14,7 @@ import { PauseMenu } from './PauseMenu';
 import { NodeInfoPanel } from './NodeInfoPanel';
 import { TutorialOverlay } from './TutorialOverlay';
 import { ObjectiveBanner } from './ObjectiveBanner';
+import { HudTimer } from './HudTimer';
 import type { TutorialDef } from '../engine/content/ContentLibrary';
 import type { NodeId } from '../types';
 import type { ArchetypeId, LevelDef } from '../engine/content/ContentLibrary';
@@ -144,7 +145,13 @@ export function GameView({ levelId }: GameViewProps) {
       sessionRef.current = session;
       engineRefForMenu.current = engine;
       setCanvasEl(r.app.canvas);
-      input = new InputController(r.app.canvas, engine, session);
+      input = new InputController(
+        r.app.canvas,
+        engine,
+        session,
+        (x, y) => r.screenToWorld(x, y),
+        (spellId, wx, wy) => r.spawnSpellOverlay(spellId, wx, wy, performance.now()),
+      );
 
       const pushTotals = (): void => {
         if (!engineRef) return;
@@ -221,6 +228,7 @@ export function GameView({ levelId }: GameViewProps) {
   return (
     <>
       <UnitBar />
+      {engineRefForMenu.current && <HudTimer engineRef={engineRefForMenu} />}
       {objective && !tutorial && <ObjectiveBanner objective={objective} />}
       {/* v2.7.6: shift the canvas below the UnitBar (24px) so nodes
          placed near y=0 in a level aren't hidden under the bar. */}

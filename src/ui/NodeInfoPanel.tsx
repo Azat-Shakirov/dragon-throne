@@ -14,8 +14,19 @@
 import { useEffect, useRef, useState } from 'react';
 import type { GameEngine } from '../engine/GameEngine';
 import type { SessionState } from '../render/SessionState';
-import type { FactionId, NodeId } from '../types';
+import type { NodeId } from '../types';
 import { playSfx } from '../audio/sfxPlayer';
+import {
+  UnitsIcon,
+  ProductionIcon,
+  DefenseIcon,
+  AttackIcon,
+  RangeIcon,
+  SpeedIcon,
+  FlaskIcon,
+  StarveIcon,
+  SpellIcon,
+} from './infoIcons';
 
 interface Props {
   engine: GameEngine;
@@ -28,7 +39,7 @@ interface Props {
 }
 
 const BASE_UNIT_SPEED_PX_PER_SEC = 90; // v2.7.3 — must match engine BASE_UNIT_SPEED.
-const PANEL_WIDTH = 240;
+const PANEL_WIDTH = 200;
 const PANEL_OFFSET_PX = 14;
 const VIEWPORT_PAD = 8;
 const HIDE_DELAY_MS = 180;
@@ -129,6 +140,93 @@ export function NodeInfoPanel({ engine, session, hoveredNodeId, canvasEl }: Prop
   const minLeft = (rect?.left ?? 0) + VIEWPORT_PAD;
   const left = Math.max(minLeft, Math.min(maxLeft, rawLeft));
 
+  // v2.9.1: compact icon-pill grid for the stat block. Each cell is
+  // a small SVG glyph + numeric value; the grid wraps to keep the
+  // panel narrow (~200 px). Tooltips on each cell carry the spelled-
+  // out meaning.
+  const pills: { key: string; icon: React.ReactNode; label: string; title: string; tone?: string }[] = [];
+
+  pills.push({
+    key: 'units',
+    icon: <UnitsIcon />,
+    label: `${Math.floor(node.units)}/${node.maxUnits}`,
+    title: 'Units (current / max)',
+  });
+
+  if (lv?.productionRate !== undefined && lv.productionRate > 0) {
+    pills.push({
+      key: 'prod',
+      icon: <ProductionIcon />,
+      label: `${lv.productionRate.toFixed(1)}/s`,
+      title: 'Production rate (units per second)',
+    });
+  }
+
+  if (lv?.defenseRate !== undefined && lv.defenseRate > 0) {
+    pills.push({
+      key: 'def',
+      icon: <DefenseIcon />,
+      label: `÷${lv.defenseRate}`,
+      title: 'Defense divisor on arriving enemy',
+    });
+  }
+
+  if (lv?.attackRate !== undefined) {
+    pills.push({
+      key: 'atk',
+      icon: <AttackIcon />,
+      label: `${lv.attackRate}/s×${lv.attackDamage ?? 0}`,
+      title: 'Attack rate × damage per shot',
+    });
+    pills.push({
+      key: 'range',
+      icon: <RangeIcon />,
+      label: `${lv.attackRange}`,
+      title: 'Attack range (px)',
+    });
+  }
+
+  if (lv?.concoctSpeed !== undefined) {
+    pills.push({
+      key: 'concoct',
+      icon: <FlaskIcon />,
+      label: `${lv.concoctSpeed.toFixed(1)}×`,
+      title: 'Spell concoct speed multiplier',
+    });
+  }
+
+  pills.push({
+    key: 'send',
+    icon: <SpeedIcon />,
+    label: `${sendSpeed}`,
+    title: 'Send speed (px/sec)',
+  });
+
+  if (node.starveStacks.length > 0) {
+    const drain = node.starveStacks.reduce((s, x) => s + x.drainPerSecond, 0);
+    pills.push({
+      key: 'starve',
+      icon: <StarveIcon />,
+      label: `−${drain}/s`,
+      title: 'Starving — units drained per second',
+      tone: '#9be29b',
+    });
+  }
+
+  if (node.spellQueue) {
+    const ready = node.spellQueue.state === 'ready';
+    const sp = engine.content.spells[node.spellQueue.spellId];
+    pills.push({
+      key: 'spell',
+      icon: <SpellIcon />,
+      label: ready ? 'READY' : `${Math.round(node.spellQueue.progress * 100)}%`,
+      title: `${sp?.name ?? node.spellQueue.spellId} — ${ready ? 'ready to cast' : 'concocting'}`,
+      tone: '#c6a8ff',
+    });
+  }
+
+  const faction = engine.content.factions[node.faction];
+
   return (
     <div
       ref={panelRef}
@@ -146,82 +244,28 @@ export function NodeInfoPanel({ engine, session, hoveredNodeId, canvasEl }: Prop
       style={{ ...panelStyle, top, left }}
     >
       <div style={headerStyle}>
-        <span style={{ ...dotStyle, background: ownerColor }} />
+        <span
+          style={{ ...dotStyle, background: ownerColor }}
+          title={faction ? faction.name : ownerLabel}
+        />
         <span style={titleStyle}>
           {capitalize(node.nodeType)} L{node.level}
         </span>
         <span style={ownerLabelStyle}>{ownerLabel}</span>
       </div>
 
-      {renderFactionChip(engine, node.faction as FactionId)}
-
-      <div style={rowStyle}>
-        <span>Units</span>
-        <span style={valueStyle}>
-          {Math.floor(node.units)} / {node.maxUnits}
-        </span>
-      </div>
-
-      {lv?.productionRate !== undefined && lv.productionRate > 0 && (
-        <div style={rowStyle}>
-          <span>Production</span>
-          <span style={valueStyle}>{lv.productionRate.toFixed(1)} u/sec</span>
-        </div>
-      )}
-
-      {lv?.defenseRate !== undefined && lv.defenseRate > 0 && (
-        <div style={rowStyle}>
-          <span>Defense rate</span>
-          <span style={valueStyle}>÷{lv.defenseRate} on arrival</span>
-        </div>
-      )}
-
-      {lv?.attackRate !== undefined && (
-        <>
-          <div style={rowStyle}>
-            <span>Attack</span>
-            <span style={valueStyle}>
-              {lv.attackRate}/s × {lv.attackDamage ?? 0} dmg
-            </span>
+      <div style={pillGridStyle}>
+        {pills.map((p) => (
+          <div
+            key={p.key}
+            style={{ ...pillStyle, color: p.tone ?? '#e8e8e8' }}
+            title={p.title}
+          >
+            <span style={pillIconStyle}>{p.icon}</span>
+            <span style={pillValueStyle}>{p.label}</span>
           </div>
-          <div style={rowStyle}>
-            <span>Range</span>
-            <span style={valueStyle}>{lv.attackRange} px</span>
-          </div>
-        </>
-      )}
-
-      {lv?.concoctSpeed !== undefined && (
-        <div style={rowStyle}>
-          <span>Concoct speed</span>
-          <span style={valueStyle}>{lv.concoctSpeed.toFixed(1)}×</span>
-        </div>
-      )}
-
-      <div style={rowStyle}>
-        <span>Send speed</span>
-        <span style={valueStyle}>{sendSpeed} px/sec</span>
+        ))}
       </div>
-
-      {node.starveStacks.length > 0 && (
-        <div style={{ ...rowStyle, color: '#9be29b' }}>
-          <span>Starving</span>
-          <span style={valueStyle}>
-            −{node.starveStacks.reduce((s, x) => s + x.drainPerSecond, 0)} u/sec
-          </span>
-        </div>
-      )}
-
-      {node.spellQueue && (
-        <div style={{ ...rowStyle, color: '#c6a8ff' }}>
-          <span>{spellLabel(engine, node.spellQueue.spellId, node.spellQueue.state)}</span>
-          <span style={valueStyle}>
-            {node.spellQueue.state === 'ready'
-              ? 'READY'
-              : `${Math.round(node.spellQueue.progress * 100)}%`}
-          </span>
-        </div>
-      )}
 
       {/* Action buttons — only on the human player's nodes. */}
       {isOwn && node.nodeType === 'lab' && (!node.spellQueue) && spellsAvailable.length > 0 && (
@@ -345,25 +389,6 @@ function capitalize(s: string): string {
   return s.length === 0 ? s : s[0]!.toUpperCase() + s.slice(1);
 }
 
-function renderFactionChip(engine: GameEngine, factionId: FactionId) {
-  const faction = engine.content.factions[factionId];
-  if (!faction) return null;
-  return (
-    <div style={liquidChipStyle}>
-      <span style={{ ...liquidSwatchStyle, background: faction.color }} />
-      <div style={liquidTextStyle}>
-        <div style={liquidNameStyle}>{faction.name}</div>
-        <div style={liquidDescStyle}>{faction.description}</div>
-      </div>
-    </div>
-  );
-}
-
-function spellLabel(engine: GameEngine, id: string, state: 'concocting' | 'ready'): string {
-  const sp = engine.content.spells[id];
-  return `${state === 'ready' ? 'Spell ready' : 'Concocting'}: ${sp?.name ?? id}`;
-}
-
 const panelStyle: React.CSSProperties = {
   position: 'fixed',
   width: PANEL_WIDTH,
@@ -406,14 +431,35 @@ const ownerLabelStyle: React.CSSProperties = {
   opacity: 0.65,
 };
 
-const rowStyle: React.CSSProperties = {
+const pillGridStyle: React.CSSProperties = {
   display: 'flex',
-  justifyContent: 'space-between',
-  padding: '2px 0',
+  flexWrap: 'wrap',
+  gap: 4,
+  marginBottom: 2,
 };
 
-const valueStyle: React.CSSProperties = {
+const pillStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
+  padding: '3px 6px',
+  background: 'rgba(255,255,255,0.06)',
+  border: '1px solid rgba(255,255,255,0.10)',
+  borderRadius: 4,
+  fontSize: 11,
+  fontWeight: 600,
+  lineHeight: 1,
+  fontVariantNumeric: 'tabular-nums',
+};
+
+const pillIconStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
   opacity: 0.85,
+};
+
+const pillValueStyle: React.CSSProperties = {
+  whiteSpace: 'nowrap',
 };
 
 const sectionStyle: React.CSSProperties = {
@@ -448,41 +494,4 @@ const buttonStyle: React.CSSProperties = {
 const costStyle: React.CSSProperties = {
   opacity: 0.7,
   marginLeft: 8,
-};
-
-const liquidChipStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'flex-start',
-  gap: 8,
-  marginBottom: 8,
-  padding: '6px 8px',
-  background: 'rgba(255,255,255,0.04)',
-  borderRadius: 4,
-};
-
-const liquidSwatchStyle: React.CSSProperties = {
-  display: 'inline-block',
-  width: 14,
-  height: 14,
-  borderRadius: 3,
-  marginTop: 1,
-  border: '1px solid rgba(255,255,255,0.18)',
-  flexShrink: 0,
-};
-
-const liquidTextStyle: React.CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-};
-
-const liquidNameStyle: React.CSSProperties = {
-  fontSize: 12,
-  fontWeight: 600,
-};
-
-const liquidDescStyle: React.CSSProperties = {
-  fontSize: 11,
-  opacity: 0.65,
-  lineHeight: 1.35,
-  marginTop: 1,
 };

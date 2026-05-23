@@ -17,6 +17,7 @@ import { EditorView } from './ui/editor/EditorView';
 import { VariantSandbox } from './ui/dev/VariantSandbox';
 import { BiomeSandbox } from './ui/dev/BiomeSandbox';
 import { UnitSandbox } from './ui/dev/UnitSandbox';
+import { WallSandbox } from './ui/dev/WallSandbox';
 
 const DEV = import.meta.env.DEV;
 
@@ -63,6 +64,8 @@ export default function App() {
       navigate('biomeSandbox');
     } else if (params.has('units')) {
       navigate('unitSandbox');
+    } else if (params.has('walls')) {
+      navigate('wallSandbox');
     }
   }, [startLevel, navigate]);
 
@@ -92,5 +95,8 @@ export default function App() {
     case 'unitSandbox':
       if (!DEV) return <MainMenu />;
       return <UnitSandbox />;
+    case 'wallSandbox':
+      if (!DEV) return <MainMenu />;
+      return <WallSandbox />;
   }
 }

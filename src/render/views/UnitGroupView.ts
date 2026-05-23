@@ -71,11 +71,21 @@ export class UnitGroupView {
   // disappear branch).
   readonly ownerId: string;
   readonly toNodeId: string;
+  // v2.9.2: cached so PixiRenderer's disappear branch can faction-color
+  // the death-puff without having to look up the player record after
+  // the engine has removed the group.
+  readonly sourceFaction: string;
+  // World position at the most recent update — the disappear branch
+  // reads this to spawn the death-puff at the spot the unit fell,
+  // not at its construction-time origin.
+  lastWorldX = 0;
+  lastWorldY = 0;
 
   constructor(ug: UnitGroup, particleLayer: Container) {
     this.groupId = ug.id;
     this.ownerId = ug.ownerId;
     this.toNodeId = ug.toNodeId;
+    this.sourceFaction = ug.sourceFaction;
     this.container = new Container();
     this.particleLayer = particleLayer;
     this.teamRing = new Graphics();
@@ -116,6 +126,8 @@ export class UnitGroupView {
     const px = ug.previousPosition.x + (ug.position.x - ug.previousPosition.x) * alpha;
     const py = ug.previousPosition.y + (ug.position.y - ug.previousPosition.y) * alpha;
     this.container.position.set(px, py);
+    this.lastWorldX = px;
+    this.lastWorldY = py;
 
     // Heading: use the tick-delta. Only update facing when the delta is
     // big enough to be meaningful — avoids flickering at stationary moments.

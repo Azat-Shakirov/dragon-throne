@@ -1,7 +1,13 @@
 // Shared menu styles — keeps the screens visually consistent without
 // pulling in a CSS framework.
+//
+// v2.9.3: buttonStyle uses button-wood.png as a background-image so
+// the menus carry the painterly castle aesthetic (vs the v2.7-era
+// flat dark-rounded-rectangle). Text sits on top; the plaque scales
+// to whatever width the button reaches.
 
 import type { CSSProperties } from 'react';
+import buttonWoodUrl from '../render/sprites/ui/button-wood.png';
 
 export const screenStyle: CSSProperties = {
   position: 'fixed',
@@ -39,24 +45,35 @@ export const subtitleStyle: CSSProperties = {
 };
 
 export const buttonStyle: CSSProperties = {
-  minWidth: 220,
-  padding: '12px 18px',
+  minWidth: 260,
+  minHeight: 52,
+  padding: '14px 26px',
   margin: '6px 0',
   fontSize: 16,
-  fontWeight: 600,
+  fontWeight: 700,
   fontFamily: 'inherit',
-  color: '#eee',
-  background: 'rgba(40, 44, 56, 0.85)',
-  border: '1px solid rgba(120, 140, 180, 0.35)',
-  borderRadius: 6,
+  color: '#f3e8d0',
+  // Painterly wooden plaque from src/render/sprites/ui/button-wood.png.
+  // background-size: 100% 100% so the plaque stretches edge-to-edge of
+  // the button (its iron-stud border is symmetric enough that this
+  // reads OK without a 9-slice). Color resets to transparent so the
+  // wood shows through; text-shadow keeps the label legible against
+  // the wood grain.
+  backgroundImage: `url(${buttonWoodUrl})`,
+  backgroundSize: '100% 100%',
+  backgroundRepeat: 'no-repeat',
+  backgroundColor: 'transparent',
+  border: 'none',
+  borderRadius: 0,
   cursor: 'pointer',
-  letterSpacing: '0.02em',
+  letterSpacing: '0.04em',
+  textShadow: '0 1px 2px rgba(0,0,0,0.75), 0 0 4px rgba(0,0,0,0.4)',
 };
 
 export const buttonDangerStyle: CSSProperties = {
   ...buttonStyle,
-  background: 'rgba(70, 28, 32, 0.85)',
-  border: '1px solid rgba(220, 100, 100, 0.45)',
+  // Danger variant keeps the wood plaque but tints the label red.
+  color: '#ffb3a8',
 };
 
 export const linkStyle: CSSProperties = {

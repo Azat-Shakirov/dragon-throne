@@ -10,7 +10,7 @@
 import { create } from 'zustand';
 import type { ArchetypeId } from '../engine/content/ContentLibrary';
 
-export type Route = 'menu' | 'levelSelect' | 'settings' | 'credits' | 'game' | 'quit' | 'editor' | 'variantSandbox' | 'biomeSandbox' | 'unitSandbox';
+export type Route = 'menu' | 'levelSelect' | 'settings' | 'credits' | 'game' | 'quit' | 'editor' | 'variantSandbox' | 'biomeSandbox' | 'unitSandbox' | 'wallSandbox';
 
 interface SessionStore {
   route: Route;
