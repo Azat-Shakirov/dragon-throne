@@ -10,7 +10,7 @@ import { useProgressStore, isLevelUnlocked } from '../store/progressStore';
 import { loadContent } from '../engine/content/ContentLoader';
 import { playSfx } from '../audio/sfxPlayer';
 import { ArchetypeIcon } from './archetypeIcons';
-import { buttonStyle, linkStyle, screenStyle, titleStyle } from './menuStyles';
+import { levelButtonStyle, linkStyle, screenStyle, titleStyle } from './menuStyles';
 import type { ArchetypeId } from '../engine/content/ContentLibrary';
 
 const STAR_FILLED = '★';
@@ -120,15 +120,9 @@ export function LevelSelect() {
               disabled={!unlocked}
               onClick={() => { playSfx('click'); if (unlocked) startLevel(id); }}
               style={{
-                ...buttonStyle,
-                minWidth: 0,
-                padding: '20px 14px',
+                ...levelButtonStyle,
                 opacity: unlocked ? 1 : 0.35,
                 cursor: unlocked ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 6,
               }}
             >
               <span style={{ fontSize: 26, fontWeight: 800 }}>{id}</span>

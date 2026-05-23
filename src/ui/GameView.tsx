@@ -150,7 +150,8 @@ export function GameView({ levelId }: GameViewProps) {
         engine,
         session,
         (x, y) => r.screenToWorld(x, y),
-        (spellId, wx, wy) => r.spawnSpellOverlay(spellId, wx, wy, performance.now()),
+        (spellId, targetNodeId, wx, wy) =>
+          r.spawnSpellOverlay(spellId, targetNodeId, wx, wy, performance.now()),
       );
 
       const pushTotals = (): void => {

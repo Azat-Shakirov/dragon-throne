@@ -103,8 +103,11 @@ export class InputController {
     // v2.9.2: optional callback to spawn a spell-effect overlay at
     // world coords. Fires alongside the spell SFX. Optional for the
     // same test/sandbox-compat reason as screenToWorld above.
+    // v2.9.4: targetNodeId arg added — freeze's persistent overlay
+    // uses it to detect recapture and tear down.
     private readonly spawnSpellOverlay?: (
       spellId: string,
+      targetNodeId: string,
       worldX: number,
       worldY: number,
     ) => void,
@@ -167,7 +170,7 @@ export class InputController {
           if (this.spawnSpellOverlay) {
             const target = this.engine.world.nodes.get(targetId);
             if (target) {
-              this.spawnSpellOverlay(spellId, target.position.x, target.position.y);
+              this.spawnSpellOverlay(spellId, targetId, target.position.x, target.position.y);
             }
           }
         }
@@ -432,7 +435,7 @@ export class InputController {
       if (this.spawnSpellOverlay) {
         const target = this.engine.world.nodes.get(targetId);
         if (target) {
-          this.spawnSpellOverlay(spellId, target.position.x, target.position.y);
+          this.spawnSpellOverlay(spellId, targetId, target.position.x, target.position.y);
         }
       }
     }

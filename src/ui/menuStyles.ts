@@ -3,11 +3,17 @@
 //
 // v2.9.3: buttonStyle uses button-wood.png as a background-image so
 // the menus carry the painterly castle aesthetic (vs the v2.7-era
-// flat dark-rounded-rectangle). Text sits on top; the plaque scales
-// to whatever width the button reaches.
+// flat dark-rounded-rectangle). Text sits on top.
+// v2.9.4: switched from background-image stretch to CSS border-image
+// 9-slice so the metal frame + iron studs stay at fixed size and
+// only the wood center stretches. Fixes the v2.9.3 horizontal-squash
+// where 5:1 menu buttons stretched the 1.67:1 source asset.
+// v2.9.4: levelButtonStyle uses the square level-button.png — better
+// aspect for the square-ish LevelSelect grid tiles.
 
 import type { CSSProperties } from 'react';
 import buttonWoodUrl from '../render/sprites/ui/button-wood.png';
+import levelButtonUrl from '../render/sprites/ui/level-button.png';
 
 export const screenStyle: CSSProperties = {
   position: 'fixed',
@@ -44,26 +50,33 @@ export const subtitleStyle: CSSProperties = {
   textTransform: 'uppercase',
 };
 
+// CSS border-image 9-slice numbers for the button-wood.png source
+// (512×308 after rembg). The metal frame + iron studs occupy ~95 px
+// from the top/bottom edges and ~75 px from the left/right edges.
+// `fill` keeps the wood interior visible as the button background.
+const BUTTON_WOOD_SLICE = '95 75 95 75 fill';
+const BUTTON_WOOD_BORDER_WIDTH = 18; // visible CSS border thickness
+
 export const buttonStyle: CSSProperties = {
   minWidth: 260,
-  minHeight: 52,
-  padding: '14px 26px',
+  minHeight: 60,
+  padding: '12px 24px',
   margin: '6px 0',
   fontSize: 16,
   fontWeight: 700,
   fontFamily: 'inherit',
   color: '#f3e8d0',
-  // Painterly wooden plaque from src/render/sprites/ui/button-wood.png.
-  // background-size: 100% 100% so the plaque stretches edge-to-edge of
-  // the button (its iron-stud border is symmetric enough that this
-  // reads OK without a 9-slice). Color resets to transparent so the
-  // wood shows through; text-shadow keeps the label legible against
-  // the wood grain.
-  backgroundImage: `url(${buttonWoodUrl})`,
-  backgroundSize: '100% 100%',
-  backgroundRepeat: 'no-repeat',
-  backgroundColor: 'transparent',
-  border: 'none',
+  // 9-slice the wood plaque. The transparent base border is required
+  // for border-image to render in CSS; border-image-slice cuts the
+  // source into 9 regions (4 corners stay at fixed size, 4 edges
+  // stretch along their axis, center stretches both ways).
+  background: 'transparent',
+  border: `${BUTTON_WOOD_BORDER_WIDTH}px solid transparent`,
+  borderImageSource: `url(${buttonWoodUrl})`,
+  borderImageSlice: BUTTON_WOOD_SLICE,
+  borderImageWidth: `${BUTTON_WOOD_BORDER_WIDTH}px`,
+  borderImageRepeat: 'stretch',
+  borderImageOutset: 0,
   borderRadius: 0,
   cursor: 'pointer',
   letterSpacing: '0.04em',
@@ -74,6 +87,39 @@ export const buttonDangerStyle: CSSProperties = {
   ...buttonStyle,
   // Danger variant keeps the wood plaque but tints the label red.
   color: '#ffb3a8',
+};
+
+// 9-slice for level-button.png (square, 446×512 after rembg). Metal
+// corners are large + square; bigger slice values than the menu button.
+const LEVEL_BUTTON_SLICE = '110 110 110 110 fill';
+const LEVEL_BUTTON_BORDER_WIDTH = 20;
+
+// Square-ish tile button for LevelSelect grid. Wraps stacked text
+// (level number + name + stars) on the level-button.png plaque.
+export const levelButtonStyle: CSSProperties = {
+  minWidth: 0,
+  minHeight: 124,
+  padding: '20px 14px',
+  margin: 0,
+  fontSize: 13,
+  fontWeight: 700,
+  fontFamily: 'inherit',
+  color: '#f3e8d0',
+  background: 'transparent',
+  border: `${LEVEL_BUTTON_BORDER_WIDTH}px solid transparent`,
+  borderImageSource: `url(${levelButtonUrl})`,
+  borderImageSlice: LEVEL_BUTTON_SLICE,
+  borderImageWidth: `${LEVEL_BUTTON_BORDER_WIDTH}px`,
+  borderImageRepeat: 'stretch',
+  borderImageOutset: 0,
+  borderRadius: 0,
+  cursor: 'pointer',
+  letterSpacing: '0.04em',
+  textShadow: '0 1px 2px rgba(0,0,0,0.75), 0 0 4px rgba(0,0,0,0.4)',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 6,
 };
 
 export const linkStyle: CSSProperties = {

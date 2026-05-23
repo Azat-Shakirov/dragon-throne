@@ -80,21 +80,30 @@ interface ActiveSpellOverlay {
   worldY: number;
   birthMs: number;
   sprite: Sprite;
+  // v2.9.4: persistent overlays (freeze) stay shown at fixed size +
+  // alpha while the target is in the spell's effect state, and tear
+  // down when the engine reverts that state (e.g. another player
+  // captures the frozen node). One-shot overlays (everything else)
+  // ignore targetNodeId and animate in/hold/out over SPELL_OVERLAY_LIFE_MS.
+  persistent: boolean;
+  targetNodeId?: string;
 }
 
 const RIPPLE_LIFE_MS = 600;
 const RIPPLE_MAX_RADIUS = 28;
 const BEAM_LIFE_MS = 220;
 const DEATH_PUFF_LIFE_MS = 700;
-// v2.9.3: sized to read as one-unit-worth of debris. UnitGroupView's
-// SPRITE_BASE_DISPLAY_HEIGHT is 30 px at visualScale 1 — a death-puff
-// at 30 px height sits next to the unit at parity scale, which is the
-// "unit just died here" read the visual wants.
-const DEATH_PUFF_BASE_SIZE_PX = 30;
-// v2.9.3: projectiles render small — clearly a weapon-not-a-vehicle.
-// Arrow display height 14 px (about half of a unit sprite); cannonball
-// scales by aspect to come out roughly square at the same height.
-const PROJECTILE_BASE_DISPLAY_HEIGHT = 14;
+// v2.9.4: sized to fit *within* one unit's silhouette (slightly
+// smaller than UnitGroupView.SPRITE_BASE_DISPLAY_HEIGHT = 30). Reads
+// as "one unit's worth of debris" without overpowering surviving
+// units next to it. The v2.9.3 value of 30 with the +25% scale-up
+// peaked at 37 px — bigger than a unit, which read as "too big".
+const DEATH_PUFF_BASE_SIZE_PX = 22;
+// v2.9.4: projectiles size by LONG edge (not height) so a long-thin
+// arrow doesn't stretch wider than a unit silhouette. The v2.9.3
+// height-based 14 px multiplied by the arrow's 128:24 aspect made it
+// ~75 px wide — 2.5× a unit's width.
+const PROJECTILE_LONG_EDGE_PX = 22;
 const SPELL_OVERLAY_LIFE_MS = 1100;
 const SPELL_OVERLAY_BASE_SIZE_PX = 120;
 
@@ -266,7 +275,7 @@ export class PixiRenderer {
     this.ingestTowerShots(recentTowerShots, world, nowMs);
     this.drawTowerBeams(nowMs, world);
     this.drawDeathPuffs(nowMs);
-    this.drawSpellOverlays(nowMs);
+    this.drawSpellOverlays(nowMs, world);
     this.selectionBoxView.update(session.boxSelect);
     this.drawRipples(nowMs);
     this.updateHud(world);
@@ -472,12 +481,10 @@ export class PixiRenderer {
   private drawTowerBeams(nowMs: number, world: World): void {
     this.beamGraphics.clear();
     const aliveKeys = new Set<number>();
-    // Scale projectile display so it tracks unit size on sparse levels
-    // (where world.visualScale > 1). Units render at SPRITE_BASE_DISPLAY_HEIGHT
-    // × visualScale; projectiles use PROJECTILE_BASE_DISPLAY_HEIGHT × the
-    // same multiplier so they read at the same on-screen size relative
-    // to units regardless of how zoomed-in the level is.
-    const targetH = PROJECTILE_BASE_DISPLAY_HEIGHT * world.visualScale;
+    // Size by LONG edge so the longest dimension matches
+    // PROJECTILE_LONG_EDGE_PX regardless of the source's aspect ratio.
+    // Scales with per-level visualScale to track unit size on sparse maps.
+    const targetLE = PROJECTILE_LONG_EDGE_PX * world.visualScale;
     for (let i = this.beams.length - 1; i >= 0; i--) {
       const b = this.beams[i]!;
       const age = nowMs - b.birthMs;
@@ -504,9 +511,15 @@ export class PixiRenderer {
           (b as { _serial?: number })._serial = serial;
           const sprite = new Sprite(b.projectile);
           sprite.anchor.set(0.5);
-          const ratio = b.projectile.width / b.projectile.height;
-          sprite.height = targetH;
-          sprite.width = targetH * ratio;
+          const tw = b.projectile.width;
+          const th = b.projectile.height;
+          if (tw >= th) {
+            sprite.width = targetLE;
+            sprite.height = targetLE * (th / tw);
+          } else {
+            sprite.height = targetLE;
+            sprite.width = targetLE * (tw / th);
+          }
           this.beamLayer.addChild(sprite);
           this.projectileSprites.set(serial, sprite);
         }
@@ -648,12 +661,19 @@ export class PixiRenderer {
     if (!tex) return;
     const sprite = new Sprite(tex);
     sprite.anchor.set(0.5, 0.7); // anchor low so the cloud sits above and the pool grounds
-    // Scale with per-level visualScale so the puff stays at one-unit
-    // size on sparse levels (where units render larger).
-    const targetH = DEATH_PUFF_BASE_SIZE_PX * visualScale;
-    const ratio = tex.width / tex.height;
-    sprite.height = targetH;
-    sprite.width = targetH * ratio;
+    // v2.9.4: size by LONG edge so the puff fits within unit silhouette
+    // regardless of source aspect (current source is 137×192, taller
+    // than wide). Scales with per-level visualScale.
+    const targetLE = DEATH_PUFF_BASE_SIZE_PX * visualScale;
+    const tw = tex.width;
+    const th = tex.height;
+    if (tw >= th) {
+      sprite.width = targetLE;
+      sprite.height = targetLE * (th / tw);
+    } else {
+      sprite.height = targetLE;
+      sprite.width = targetLE * (tw / th);
+    }
     sprite.position.set(worldX, worldY);
     this.particleLayer.addChild(sprite);
     this.deathPuffs.push({ x: worldX, y: worldY, birthMs: nowMs, texture: tex, sprite });
@@ -670,20 +690,48 @@ export class PixiRenderer {
         continue;
       }
       const t = age / DEATH_PUFF_LIFE_MS;
-      // Slight scale-up + alpha fade. Cloud rises a bit (negative Y).
-      const scale = 1.0 + t * 0.25;
-      p.sprite.scale.set(scale);
+      // v2.9.4: dropped the scale-up that peaked at 1.25 — the v2.9.3
+      // pop made the puff visually larger than a unit at peak. Now
+      // just alpha-fade and rise; scale stays at the spawn size.
       p.sprite.alpha = 1.0 - t;
       p.sprite.y = p.y - t * 6;
     }
   }
 
-  // v2.9.2: spawn a transient spell-effect overlay at the target node.
-  // Called from outside (InputController) when a spell is cast; the
-  // overlay lifetime drives the visual without engine involvement.
-  spawnSpellOverlay(spellId: string, worldX: number, worldY: number, nowMs: number): void {
+  // v2.9.2: spawn a spell-effect overlay at the target node. Freeze
+  // is persistent (stays until the node is recaptured); other spells
+  // are one-shot and animate in/hold/out over SPELL_OVERLAY_LIFE_MS.
+  // v2.9.4: targetNodeId added — freeze needs it to detect when the
+  // node has been recaptured (ownerId becomes non-null) so the
+  // persistent overlay can tear down.
+  spawnSpellOverlay(
+    spellId: string,
+    targetNodeId: string,
+    worldX: number,
+    worldY: number,
+    nowMs: number,
+  ): void {
     const tex = getSpellTexture(spellId as 'freeze' | 'starve' | 'sabotage');
     if (!tex) return;
+
+    const persistent = spellId === 'freeze';
+
+    // Persistent: dedupe by target — if a freeze overlay already
+    // exists for this node (shouldn't normally happen, since the
+    // engine refuses to freeze an already-neutral node — but
+    // defensive against double-fire), tear down the old one before
+    // spawning the new.
+    if (persistent) {
+      for (let i = this.activeSpellOverlays.length - 1; i >= 0; i--) {
+        const o = this.activeSpellOverlays[i]!;
+        if (o.persistent && o.targetNodeId === targetNodeId) {
+          this.beamLayer.removeChild(o.sprite);
+          o.sprite.destroy();
+          this.activeSpellOverlays.splice(i, 1);
+        }
+      }
+    }
+
     const sprite = new Sprite(tex);
     sprite.anchor.set(0.5);
     const targetH = SPELL_OVERLAY_BASE_SIZE_PX;
@@ -691,14 +739,51 @@ export class PixiRenderer {
     sprite.height = targetH;
     sprite.width = targetH * ratio;
     sprite.position.set(worldX, worldY);
-    sprite.alpha = 0;
+    // Persistent overlays show at full opacity immediately, no
+    // build-in animation. One-shot overlays start at 0 and fade in.
+    sprite.alpha = persistent ? 1 : 0;
     this.beamLayer.addChild(sprite);
-    this.activeSpellOverlays.push({ spellId, worldX, worldY, birthMs: nowMs, sprite });
+    this.activeSpellOverlays.push({
+      spellId,
+      worldX,
+      worldY,
+      birthMs: nowMs,
+      sprite,
+      persistent,
+      targetNodeId,
+    });
   }
 
-  private drawSpellOverlays(nowMs: number): void {
+  // v2.9.4: drawSpellOverlays takes the world so it can tear down
+  // persistent overlays once the engine state that triggered them
+  // has reverted (e.g. someone captures a frozen node).
+  private drawSpellOverlays(nowMs: number, world: World): void {
     for (let i = this.activeSpellOverlays.length - 1; i >= 0; i--) {
       const o = this.activeSpellOverlays[i]!;
+
+      if (o.persistent) {
+        // Freeze overlay stays until the targeted node is recaptured.
+        // Engine signal: freeze sets ownerId = null + faction = 'neutral';
+        // any capture (combat or sabotage) sets ownerId back to a player.
+        const node = o.targetNodeId ? world.nodes.get(o.targetNodeId) : null;
+        const stillFrozen = !!node && node.ownerId === null;
+        if (!stillFrozen) {
+          this.beamLayer.removeChild(o.sprite);
+          o.sprite.destroy();
+          this.activeSpellOverlays.splice(i, 1);
+          continue;
+        }
+        // Keep sprite glued to the node — if a future feature lets
+        // nodes move, the overlay tracks them. Today nodes are
+        // static so this is a no-op refresh.
+        if (node) {
+          o.sprite.position.set(node.position.x, node.position.y);
+        }
+        // No alpha or scale animation — the ring just sits there.
+        continue;
+      }
+
+      // One-shot animated overlay (starve / sabotage / future spells).
       const age = nowMs - o.birthMs;
       if (age > SPELL_OVERLAY_LIFE_MS) {
         this.beamLayer.removeChild(o.sprite);
