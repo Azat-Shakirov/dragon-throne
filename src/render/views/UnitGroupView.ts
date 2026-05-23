@@ -65,8 +65,17 @@ export class UnitGroupView {
   private lastPuffMs = 0;
   private readonly puffs: FootPuff[] = [];
 
+  // Cached at construction so the renderer can look them up after the
+  // engine removes the UnitGroup from world.unitGroups (used to dispatch
+  // arrive_friendly / arrive_hostile SFX in PixiRenderer.syncUnitGroups'
+  // disappear branch).
+  readonly ownerId: string;
+  readonly toNodeId: string;
+
   constructor(ug: UnitGroup, particleLayer: Container) {
     this.groupId = ug.id;
+    this.ownerId = ug.ownerId;
+    this.toNodeId = ug.toNodeId;
     this.container = new Container();
     this.particleLayer = particleLayer;
     this.teamRing = new Graphics();

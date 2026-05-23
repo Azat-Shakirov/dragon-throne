@@ -1,23 +1,28 @@
 import { useSessionStore } from '../store/sessionStore';
+import { playSfx } from '../audio/sfxPlayer';
 import { buttonStyle, screenStyle, subtitleStyle, titleStyle } from './menuStyles';
 
 const DEV = import.meta.env.DEV;
 
 export function MainMenu() {
   const navigate = useSessionStore((s) => s.navigate);
+  const go = (route: Parameters<typeof navigate>[0]) => {
+    playSfx('click');
+    navigate(route);
+  };
   return (
     <div style={screenStyle}>
       <div style={titleStyle}>Dragon's Throne</div>
       <div style={subtitleStyle}>node capture · castle strategy</div>
-      <button style={buttonStyle} onClick={() => navigate('levelSelect')}>Play</button>
-      <button style={buttonStyle} onClick={() => navigate('settings')}>Settings</button>
-      <button style={buttonStyle} onClick={() => navigate('credits')}>Credits</button>
+      <button style={buttonStyle} onClick={() => go('levelSelect')}>Play</button>
+      <button style={buttonStyle} onClick={() => go('settings')}>Settings</button>
+      <button style={buttonStyle} onClick={() => go('credits')}>Credits</button>
       {DEV && (
-        <button style={buttonStyle} onClick={() => navigate('editor')}>
+        <button style={buttonStyle} onClick={() => go('editor')}>
           Level Editor (dev)
         </button>
       )}
-      <button style={buttonStyle} onClick={() => navigate('quit')}>Quit</button>
+      <button style={buttonStyle} onClick={() => go('quit')}>Quit</button>
     </div>
   );
 }

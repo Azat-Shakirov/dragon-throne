@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 import { useProgressStore } from '../store/progressStore';
+import { playSfx } from '../audio/sfxPlayer';
 import {
   buttonDangerStyle,
   buttonStyle,
@@ -34,11 +35,11 @@ export function Settings() {
           onChange={setSfxVolume}
         />
         <p style={{ color: '#7a8090', fontSize: 12, marginTop: 8 }}>
-          Music plays on a loop; SFX wires up later.
+          Music plays on a loop. SFX use synthesized fallbacks until real files are dropped into /sfx/.
         </p>
         <hr style={{ border: 'none', borderTop: '1px solid rgba(120, 140, 180, 0.18)', margin: '20px 0' }} />
         {!confirming ? (
-          <button style={buttonDangerStyle} onClick={() => setConfirming(true)}>
+          <button style={buttonDangerStyle} onClick={() => { playSfx('click'); setConfirming(true); }}>
             Reset progress
           </button>
         ) : (
@@ -47,19 +48,20 @@ export function Settings() {
             <button
               style={buttonDangerStyle}
               onClick={() => {
+                playSfx('click');
                 resetProgress();
                 setConfirming(false);
               }}
             >
               Yes, reset
             </button>
-            <button style={{ ...buttonStyle, marginLeft: 8 }} onClick={() => setConfirming(false)}>
+            <button style={{ ...buttonStyle, marginLeft: 8 }} onClick={() => { playSfx('click'); setConfirming(false); }}>
               Cancel
             </button>
           </div>
         )}
       </div>
-      <button style={linkStyle} onClick={() => navigate('menu')}>← back</button>
+      <button style={linkStyle} onClick={() => { playSfx('click'); navigate('menu'); }}>← back</button>
     </div>
   );
 }

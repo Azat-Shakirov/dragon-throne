@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { useSessionStore } from './store/sessionStore';
 import { useProgressStore } from './store/progressStore';
 import { initMusicPlayer, setMusicVolume } from './audio/musicPlayer';
+import { initSfxPlayer, setSfxVolume } from './audio/sfxPlayer';
 import { MainMenu } from './ui/MainMenu';
 import { LevelSelect } from './ui/LevelSelect';
 import { Settings } from './ui/Settings';
@@ -25,16 +26,21 @@ export default function App() {
   const startLevel = useSessionStore((s) => s.startLevel);
   const navigate = useSessionStore((s) => s.navigate);
   const musicVolume = useProgressStore((s) => s.settings.musicVolume);
+  const sfxVolume = useProgressStore((s) => s.settings.sfxVolume);
 
   // Background music: init once with the persisted volume; the player
   // arms itself on the first user gesture (browser autoplay policy).
   // Subsequent volume changes are pushed live.
   useEffect(() => {
     initMusicPlayer(useProgressStore.getState().settings.musicVolume);
+    initSfxPlayer(useProgressStore.getState().settings.sfxVolume);
   }, []);
   useEffect(() => {
     setMusicVolume(musicVolume);
   }, [musicVolume]);
+  useEffect(() => {
+    setSfxVolume(sfxVolume);
+  }, [sfxVolume]);
 
   // DEV-only URL bootstrap: ?level=N jumps straight to game view at level N;
   // ?variants jumps to the unit-walk-cycle variant sandbox; ?biomes jumps to

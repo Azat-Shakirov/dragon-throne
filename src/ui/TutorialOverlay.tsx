@@ -4,6 +4,7 @@
 // nothing (the player must read + dismiss).
 
 import type { TutorialDef } from '../engine/content/ContentLibrary';
+import { playSfx } from '../audio/sfxPlayer';
 
 interface Props {
   tutorial: TutorialDef;
@@ -18,7 +19,7 @@ export function TutorialOverlay({ tutorial, levelName, onDismiss }: Props) {
         <div style={kickerStyle}>{levelName}</div>
         <div style={titleStyle}>{tutorial.title}</div>
         <div style={bodyStyle}>{tutorial.body}</div>
-        <button style={buttonStyle} onClick={onDismiss}>Start</button>
+        <button style={buttonStyle} onClick={() => { playSfx('click'); onDismiss(); }}>Start</button>
       </div>
     </div>
   );

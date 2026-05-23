@@ -26,6 +26,7 @@ import type { SessionState } from './SessionState';
 import { loadNodeTextures } from './sprites/nodeSprites';
 import { loadUnitTextures } from './sprites/unitSprites';
 import { loadBiomeTextures, getBiomeTexture } from './sprites/biomeSprites';
+import { playSfx } from '../audio/sfxPlayer';
 
 interface ClickRipple {
   x: number;
@@ -80,6 +81,9 @@ export class PixiRenderer {
   // Biome floor is static per level — track separately from walls.
   private lastBiomeLevelId: number | null = null;
   private biomeSprite: Sprite | null = null;
+  // Win/lose SFX edge detection — fire the stinger once on the transition
+  // out of 'playing', not every frame the banner is shown.
+  private lastWorldStatus: World['status'] | null = null;
 
   private readonly nodeViews = new Map<string, NodeView>();
   private readonly unitViews = new Map<string, UnitGroupView>();
@@ -393,11 +397,30 @@ export class PixiRenderer {
         view = new UnitGroupView(ug, this.particleLayer);
         this.unitViews.set(ug.id, view);
         this.unitLayer.addChild(view.container);
+        // Launch SFX: only when the human player sends. AI mass-sends would
+        // otherwise carpet-bomb the audio channel.
+        if (world.humanPlayerId !== null && ug.ownerId === world.humanPlayerId) {
+          playSfx('launch');
+        }
       }
       view.update(ug, world, this.content, alpha, nowMs);
     }
     for (const [id, view] of this.unitViews) {
       if (!present.has(id)) {
+        // Arrival SFX: friendly = the human's group lands anywhere;
+        // hostile = an enemy group lands on a human-owned node (alert cue).
+        // AI-on-AI is silent so the audio channel stays useful as a
+        // player-facing gameplay signal.
+        if (world.humanPlayerId !== null) {
+          if (view.ownerId === world.humanPlayerId) {
+            playSfx('arrive_friendly');
+          } else {
+            const target = world.nodes.get(view.toNodeId);
+            if (target && target.ownerId === world.humanPlayerId) {
+              playSfx('arrive_hostile');
+            }
+          }
+        }
         view.destroy();
         this.unitViews.delete(id);
       }
@@ -525,6 +548,16 @@ export class PixiRenderer {
   private updateHud(world: World): void {
     const elapsedSec = (world.elapsedMs / 1000).toFixed(1);
     this.hudText.text = `level: ${world.level.id} (${world.level.name})   tick: ${world.tick}   t: ${elapsedSec}s`;
+
+    // Win/lose stinger fires once on the transition out of 'playing'.
+    if (world.status !== this.lastWorldStatus) {
+      if (this.lastWorldStatus === 'playing' && world.status === 'won') {
+        playSfx('win');
+      } else if (this.lastWorldStatus === 'playing' && world.status === 'lost') {
+        playSfx('lose');
+      }
+      this.lastWorldStatus = world.status;
+    }
 
     if (world.status === 'won') {
       this.statusText.text = 'VICTORY\nR — retry   N — next';

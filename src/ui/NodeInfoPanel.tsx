@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { GameEngine } from '../engine/GameEngine';
 import type { SessionState } from '../render/SessionState';
 import type { FactionId, NodeId } from '../types';
+import { playSfx } from '../audio/sfxPlayer';
 
 interface Props {
   engine: GameEngine;
@@ -233,7 +234,14 @@ export function NodeInfoPanel({ engine, session, hoveredNodeId, canvasEl }: Prop
             return (
               <button
                 key={sid}
-                onClick={() => engine.startConcoction(node.id, sid)}
+                onClick={() => {
+                  if (!affordable) {
+                    playSfx('click');
+                    return;
+                  }
+                  const result = engine.startConcoction(node.id, sid);
+                  playSfx(result.ok ? 'spell_concoct_start' : 'click');
+                }}
                 disabled={!affordable}
                 style={{
                   ...buttonStyle,
@@ -252,7 +260,7 @@ export function NodeInfoPanel({ engine, session, hoveredNodeId, canvasEl }: Prop
       {isOwn && node.nodeType === 'lab' && node.spellQueue && (
         <div style={sectionStyle}>
           <button
-            onClick={() => engine.cancelConcoction(node.id)}
+            onClick={() => { playSfx('click'); engine.cancelConcoction(node.id); }}
             style={{ ...buttonStyle, color: '#ffb38a' }}
           >
             Cancel concoction
@@ -260,6 +268,7 @@ export function NodeInfoPanel({ engine, session, hoveredNodeId, canvasEl }: Prop
           {node.spellQueue.state === 'ready' && (
             <button
               onClick={() => {
+                playSfx('click');
                 session.targetingFromLabId = node.id;
               }}
               style={{ ...buttonStyle, color: '#9be29b' }}
@@ -315,7 +324,7 @@ function renderUpgradeButtons(engine: GameEngine, node: ReturnType<GameEngine['w
         return (
           <button
             key={i}
-            onClick={o.onPick}
+            onClick={() => { playSfx('click'); if (affordable) o.onPick(); }}
             disabled={!affordable}
             style={{
               ...buttonStyle,

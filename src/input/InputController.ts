@@ -45,6 +45,7 @@ import type { NodeId, Vec2 } from '../types';
 import type { SessionState } from '../render/SessionState';
 import { metricsForType, NODE_SPRITE_SCALE_FACTOR } from '../render/shapes';
 import { resolveClick, type ClickAction } from './clickResolver';
+import { playSfx, type SfxEvent } from '../audio/sfxPlayer';
 
 const DEAD_ZONE_PX = 5;
 const DOUBLE_CLICK_MS = 350;
@@ -143,7 +144,13 @@ export class InputController {
     if (this.session.targetingFromLabId !== null) {
       const targetId = this.pickNodeAt(x, y);
       if (targetId) {
-        this.engine.castSpell(this.session.targetingFromLabId, targetId);
+        const labId = this.session.targetingFromLabId;
+        const lab = this.engine.world.nodes.get(labId);
+        const spellId = lab?.spellQueue?.spellId ?? null;
+        const result = this.engine.castSpell(labId, targetId);
+        if (result.ok && spellId !== null) {
+          playSfx(spellSfxFor(spellId));
+        }
       }
       this.session.targetingFromLabId = null;
       return;
@@ -398,7 +405,11 @@ export class InputController {
     if (!source) return 'none';
     if (source.nodeType !== 'lab') return 'none';
     if (!source.spellQueue || source.spellQueue.state !== 'ready') return 'none';
-    this.engine.castSpell(source.id, targetId);
+    const spellId = source.spellQueue.spellId;
+    const result = this.engine.castSpell(source.id, targetId);
+    if (result.ok) {
+      playSfx(spellSfxFor(spellId));
+    }
     return 'cast';
   }
 
@@ -488,5 +499,21 @@ export class InputController {
       if (d <= radius && (!best || d < best.d)) best = { id, d };
     }
     return best ? best.id : null;
+  }
+}
+
+// Maps a spell ID to its SFX event. Unknown IDs (future spells without
+// a dedicated cue) fall back to the 'spell_ready' chime so we never
+// go silent on a cast.
+function spellSfxFor(spellId: string): SfxEvent {
+  switch (spellId) {
+    case 'freeze':
+      return 'spell_freeze';
+    case 'starve':
+      return 'spell_starve';
+    case 'sabotage':
+      return 'spell_sabotage';
+    default:
+      return 'spell_ready';
   }
 }

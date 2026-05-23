@@ -20,6 +20,7 @@ import {
 } from '../shapes';
 import { buildLiquidPolyPoints } from '../liquidAnimator';
 import { getNodeTexture } from '../sprites/nodeSprites';
+import { playSfx } from '../../audio/sfxPlayer';
 
 const NEUTRAL_OUTLINE = 0x666666;
 const SELECTION_COLOR = 0xffffff;
@@ -93,11 +94,16 @@ export class NodeView {
   // crossings. productionPulseStartMs is null when no pulse is active.
   private lastUnitFloor: number;
   private productionPulseStartMs: number | null = null;
+  // Spell-state edge detection for the 'spell_ready' SFX cue. Initialized
+  // from node state at construction so loading a saved game with an
+  // already-ready Lab doesn't false-trigger the chime.
+  private lastSpellState: 'none' | 'concocting' | 'ready';
 
   constructor(node: Node) {
     this.nodeId = node.id;
     this.lastOwnerId = node.ownerId;
     this.lastUnitFloor = Math.floor(node.units);
+    this.lastSpellState = node.spellQueue?.state ?? 'none';
     this.container = new Container();
     this.container.position.set(node.position.x, node.position.y);
 
@@ -186,6 +192,16 @@ export class NodeView {
       }
       this.captureFlash = { startMs: nowMs, color: burstColor, particles };
       this.lastOwnerId = node.ownerId;
+      playSfx('capture');
+    }
+
+    // Spell-state edge: fire 'spell_ready' on the concocting→ready transition.
+    const currentSpellState = node.spellQueue?.state ?? 'none';
+    if (currentSpellState !== this.lastSpellState) {
+      if (currentSpellState === 'ready' && this.lastSpellState === 'concocting') {
+        playSfx('spell_ready');
+      }
+      this.lastSpellState = currentSpellState;
     }
 
     // ── Production pulse detection (v2.8.5) ─────────────────────────────

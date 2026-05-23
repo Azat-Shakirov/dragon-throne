@@ -59,8 +59,10 @@ $RECYCLE.BIN/
 # Local audio placeholders. The MP3 the author dropped into sounds/
 # is a third-party track used for local playtest only; not licensed
 # for redistribution. Real audio assets will land under a different
-# path once they're cleared.
+# path once they're cleared. sfx/ holds optional per-event SFX file
+# overrides; the synth fallbacks in sfxPlayer.ts cover any missing files.
 sounds/
+sfx/
 
 # Private — never commit to public repo.
 # Spec, design, asset plan, design-interview summary, agent-instruction
