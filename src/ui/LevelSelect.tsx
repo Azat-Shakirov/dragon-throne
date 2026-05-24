@@ -10,7 +10,7 @@ import { useProgressStore, isLevelUnlocked } from '../store/progressStore';
 import { loadContent } from '../engine/content/ContentLoader';
 import { playSfx } from '../audio/sfxPlayer';
 import { ArchetypeIcon } from './archetypeIcons';
-import { chipSelectedStyle, chipStyle, levelButtonStyle, linkStyle, screenStyle, titleStyle } from './menuStyles';
+import { buttonStyle, chipSelectedStyle, chipStyle, levelButtonStyle, screenStyle, titleStyle } from './menuStyles';
 import type { ArchetypeId } from '../engine/content/ContentLibrary';
 
 const STAR_FILLED = '★';
@@ -29,18 +29,16 @@ export function LevelSelect() {
   const completedLevels = useProgressStore((s) => s.completedLevels);
 
   const content = useMemo(() => loadContent(), []);
-  // Level 0 is the dev sandbox — hide it from the regular grid; reachable
-  // only via the DEV-only Sandbox button below.
+  // Level 0 is the dev sandbox — hide it from the regular grid. The
+  // v2.9.8 DEV-only Sandbox link was retired in v2.9.9; if you need
+  // the sandbox during development, edit sessionStore's default route
+  // to 'game' with selectedLevelId 0.
   const sortedIds = useMemo(
     () =>
       Object.keys(content.levels)
         .map(Number)
         .filter((id) => id !== 0)
         .sort((a, b) => a - b),
-    [content.levels],
-  );
-  const hasSandbox = useMemo(
-    () => content.levels[0] !== undefined,
     [content.levels],
   );
   // Only show the challenge-tier picker once at least one level with
@@ -52,6 +50,10 @@ export function LevelSelect() {
 
   return (
     <div style={screenStyle}>
+      {/* v2.9.9: back button anchored top-left at full menu-button size. */}
+      <button style={backButtonStyle} onClick={() => { playSfx('click'); navigate('menu'); }}>
+        ← back
+      </button>
       <div style={{ ...titleStyle, fontSize: 36, marginBottom: 24 }}>Choose a Level</div>
       {hasChallengeLevels && (
         <div style={pickerRowStyle}>
@@ -133,18 +135,20 @@ export function LevelSelect() {
           );
         })}
       </div>
-      {import.meta.env.DEV && hasSandbox && (
-        <button
-          style={{ ...linkStyle, color: '#9be29b', marginTop: 8 }}
-          onClick={() => { playSfx('click'); startLevel(0); }}
-        >
-          ⚙ Sandbox (L0) — sprite preview
-        </button>
-      )}
-      <button style={linkStyle} onClick={() => { playSfx('click'); navigate('menu'); }}>← back</button>
     </div>
   );
 }
+
+const backButtonStyle: React.CSSProperties = {
+  ...buttonStyle,
+  position: 'fixed',
+  top: 16,
+  left: 16,
+  margin: 0,
+  // Keep auto width so the "← back" label hugs without the 200-px
+  // minimum sprawling across the corner.
+  minWidth: 0,
+};
 
 const pickerRowStyle: React.CSSProperties = {
   display: 'flex',

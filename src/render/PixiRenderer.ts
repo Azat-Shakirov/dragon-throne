@@ -103,7 +103,10 @@ const DEATH_PUFF_BASE_SIZE_PX = 22;
 // arrow doesn't stretch wider than a unit silhouette. The v2.9.3
 // height-based 14 px multiplied by the arrow's 128:24 aspect made it
 // ~75 px wide — 2.5× a unit's width.
-const PROJECTILE_LONG_EDGE_PX = 22;
+// v2.9.9: bumped 22 → 30 to match UnitGroupView.SPRITE_BASE_DISPLAY_HEIGHT,
+// so an arrow / bolt / cannonball's long edge equals a unit's height.
+// (At per-level visualScale this still scales together with the unit.)
+const PROJECTILE_LONG_EDGE_PX = 30;
 const SPELL_OVERLAY_LIFE_MS = 1100;
 const SPELL_OVERLAY_BASE_SIZE_PX = 120;
 

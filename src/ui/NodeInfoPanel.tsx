@@ -16,6 +16,7 @@ import type { GameEngine } from '../engine/GameEngine';
 import type { SessionState } from '../render/SessionState';
 import type { NodeId } from '../types';
 import { playSfx } from '../audio/sfxPlayer';
+import { metricsForType, NODE_SPRITE_SCALE_FACTOR } from '../render/shapes';
 import {
   UnitsIcon,
   ProductionIcon,
@@ -42,7 +43,9 @@ interface Props {
 
 const BASE_UNIT_SPEED_PX_PER_SEC = 90; // v2.7.3 — must match engine BASE_UNIT_SPEED.
 const PANEL_WIDTH = 200;
-const PANEL_OFFSET_PX = 14;
+// v2.9.9: dropped from 14 → 4 so the panel sits right above the node
+// sprite instead of floating a chunky gap above it.
+const PANEL_OFFSET_PX = 4;
 const VIEWPORT_PAD = 8;
 const HIDE_DELAY_MS = 180;
 
@@ -130,7 +133,14 @@ export function NodeInfoPanel({ engine, session, hoveredNodeId, canvasEl }: Prop
   const rect = canvasEl?.getBoundingClientRect();
   const nodeScreenX = (rect?.left ?? 0) + node.position.x;
   const nodeScreenY = (rect?.top ?? 0) + node.position.y;
-  const nodeHalfHeight = 36; // approximate half-size for shape clearance
+  // v2.9.9: compute the actual sprite half-height from the same
+  // formula NodeView uses (metricsForType × NODE_SPRITE_SCALE_FACTOR),
+  // so the panel bottom sits at the exact top edge of THIS node's
+  // sprite rather than a one-size-fits-all guess. Combined with
+  // PANEL_OFFSET_PX = 4 the panel reads as "right above the node"
+  // regardless of node type (house=61, barracks=84, lab=tower=76 at L1).
+  const nodeMetrics = metricsForType(node.nodeType, node.level, engine.world.visualScale);
+  const nodeHalfHeight = (nodeMetrics.size * NODE_SPRITE_SCALE_FACTOR[node.nodeType]) / 2;
   const panelH = panelHeight || 200;
   const aboveTop = nodeScreenY - nodeHalfHeight - PANEL_OFFSET_PX - panelH;
   const fitsAbove = aboveTop >= VIEWPORT_PAD;
