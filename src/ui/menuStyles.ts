@@ -94,12 +94,16 @@ export const buttonDangerStyle: CSSProperties = {
 const LEVEL_BUTTON_SLICE = '110 110 110 110 fill';
 const LEVEL_BUTTON_BORDER_WIDTH = 20;
 
-// Square-ish tile button for LevelSelect grid. Wraps stacked text
-// (level number + name + stars) on the level-button.png plaque.
+// Square tile button for LevelSelect grid. CSS aspect-ratio: 1
+// forces height = width regardless of the grid cell's natural
+// width — the v2.9.4 build was rectangular because grid cells were
+// ~200×124. The level-button.png source is square, so a square
+// tile gives a 9-slice without distortion in either axis.
 export const levelButtonStyle: CSSProperties = {
+  width: '100%',
+  aspectRatio: '1 / 1',
   minWidth: 0,
-  minHeight: 124,
-  padding: '20px 14px',
+  padding: '14px 12px',
   margin: 0,
   fontSize: 13,
   fontWeight: 700,
@@ -119,7 +123,8 @@ export const levelButtonStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  gap: 6,
+  justifyContent: 'center',
+  gap: 4,
 };
 
 export const linkStyle: CSSProperties = {

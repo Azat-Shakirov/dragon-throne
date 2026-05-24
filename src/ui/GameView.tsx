@@ -13,7 +13,6 @@ import { UnitBar } from './UnitBar';
 import { PauseMenu } from './PauseMenu';
 import { NodeInfoPanel } from './NodeInfoPanel';
 import { TutorialOverlay } from './TutorialOverlay';
-import { ObjectiveBanner } from './ObjectiveBanner';
 import { HudTimer } from './HudTimer';
 import type { TutorialDef } from '../engine/content/ContentLibrary';
 import type { NodeId } from '../types';
@@ -37,7 +36,6 @@ export function GameView({ levelId }: GameViewProps) {
   const [hoveredId, setHoveredId] = useState<NodeId | null>(null);
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
   const [tutorial, setTutorial] = useState<TutorialDef | null>(null);
-  const [objective, setObjective] = useState<string | null>(null);
   const [levelName, setLevelName] = useState<string>('');
   const tutorialOpenRef = useRef(false);
   const engineRefForMenu = useRef<GameEngine | null>(null);
@@ -120,9 +118,10 @@ export function GameView({ levelId }: GameViewProps) {
           : baseLevel;
         engine = new GameEngine(level, content);
         engineRef = engine;
-        // Phase 5: surface tutorial modal + objective banner.
+        // v2.9.5: the in-game ObjectiveBanner overlay was retired
+        // (objective text now lives inside the level-intro TutorialOverlay
+        // on the parchment scroll). LevelName still drives the modal kicker.
         setLevelName(level.name);
-        setObjective(level.objective ?? null);
         if (level.tutorial) {
           setTutorial(level.tutorial);
           tutorialOpenRef.current = true;
@@ -230,7 +229,6 @@ export function GameView({ levelId }: GameViewProps) {
     <>
       <UnitBar />
       {engineRefForMenu.current && <HudTimer engineRef={engineRefForMenu} />}
-      {objective && !tutorial && <ObjectiveBanner objective={objective} />}
       {/* v2.7.6: shift the canvas below the UnitBar (24px) so nodes
          placed near y=0 in a level aren't hidden under the bar. */}
       <div

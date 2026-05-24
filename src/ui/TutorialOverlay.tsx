@@ -2,9 +2,18 @@
 // a `tutorial` field. Engine is paused until the user clicks Start.
 // Visible on top of the game canvas; clicking outside the card does
 // nothing (the player must read + dismiss).
+//
+// v2.9.5: card rendered on the painterly parchment-banner.png scroll.
+// border-image 9-slice with horizontal-only slice (0 / 80 / 0 / 80
+// fill) keeps the wooden rollers at fixed size on the left + right
+// edges and stretches the parchment middle to accommodate variable
+// tutorial body height. The in-game ObjectiveBanner overlay was
+// retired in this version — the level intro IS the parchment scroll.
 
 import type { TutorialDef } from '../engine/content/ContentLibrary';
 import { playSfx } from '../audio/sfxPlayer';
+import { buttonStyle } from './menuStyles';
+import parchmentUrl from '../render/sprites/ui/parchment-banner.png';
 
 interface Props {
   tutorial: TutorialDef;
@@ -36,48 +45,59 @@ const backdropStyle: React.CSSProperties = {
   fontFamily: 'system-ui, sans-serif',
 };
 
+// 9-slice the parchment scroll. Source 512×419; the rollers occupy
+// ~80px on the left and right edges. `0 80 0 80 fill` means no
+// slice on top/bottom (parchment center stretches the full source
+// width vertically — its torn edges read fine at any card height),
+// 80px slice on left/right (wooden rollers stay at natural size),
+// and `fill` keeps the parchment center visible as the card body.
+const PARCHMENT_SLICE = '0 80 0 80 fill';
+const PARCHMENT_BORDER_L = 60;
+const PARCHMENT_BORDER_R = 60;
+
 const cardStyle: React.CSSProperties = {
-  background: '#181b22',
-  border: '1px solid rgba(255,255,255,0.12)',
-  borderRadius: 10,
-  padding: '32px 36px',
-  width: 480,
-  maxWidth: '90vw',
-  boxShadow: '0 16px 48px rgba(0,0,0,0.55)',
-  color: '#e8e8e8',
+  width: 540,
+  maxWidth: '92vw',
+  // Padding clears the wooden rollers (~60px each side on screen) +
+  // some breathing room for the parchment edges (top/bottom).
+  padding: `36px 78px 32px 78px`,
+  textAlign: 'center',
+  color: '#3a2a1a',
+  background: 'transparent',
+  border: `0px solid transparent`,
+  borderLeftWidth: `${PARCHMENT_BORDER_L}px`,
+  borderRightWidth: `${PARCHMENT_BORDER_R}px`,
+  borderImageSource: `url(${parchmentUrl})`,
+  borderImageSlice: PARCHMENT_SLICE,
+  borderImageWidth: `0 ${PARCHMENT_BORDER_R}px 0 ${PARCHMENT_BORDER_L}px`,
+  borderImageRepeat: 'stretch',
+  borderImageOutset: 0,
+  borderRadius: 0,
+  filter: 'drop-shadow(0 16px 32px rgba(0,0,0,0.55))',
 };
 
 const kickerStyle: React.CSSProperties = {
   fontSize: 11,
-  letterSpacing: '0.18em',
+  letterSpacing: '0.22em',
   textTransform: 'uppercase',
-  color: '#7a8090',
+  color: '#7a5a32',
+  fontWeight: 700,
   marginBottom: 8,
 };
 
 const titleStyle: React.CSSProperties = {
-  fontSize: 24,
-  fontWeight: 700,
-  marginBottom: 16,
+  fontSize: 26,
+  fontWeight: 800,
+  marginBottom: 18,
+  color: '#3a2a1a',
+  textShadow: '0 1px 0 rgba(255, 240, 210, 0.45)',
 };
 
 const bodyStyle: React.CSSProperties = {
   fontSize: 14,
-  lineHeight: 1.55,
-  color: '#cdd3dd',
+  lineHeight: 1.6,
+  color: '#4a3520',
   marginBottom: 24,
   whiteSpace: 'pre-line',
-};
-
-const buttonStyle: React.CSSProperties = {
-  display: 'inline-block',
-  padding: '10px 22px',
-  background: '#3da9fc',
-  color: '#0a1018',
-  fontWeight: 700,
-  fontSize: 14,
-  border: 'none',
-  borderRadius: 6,
-  cursor: 'pointer',
-  letterSpacing: '0.04em',
+  textShadow: '0 1px 0 rgba(255, 240, 210, 0.3)',
 };

@@ -18,8 +18,16 @@ import type { BiomeId } from '../../engine/content/ContentLibrary';
 // silent fallbacks would mask asset-pipeline regressions.
 import grassWallUrl from './walls/wall-grass.png';
 import grassWall1Url from './walls/wall-grass-1.png';
-import desertWallUrl from './walls/wall-desert.png';
-import desertWall1Url from './walls/wall-desert-1.png';
+// v2.9.5: desert wall sources retired from the registry per author —
+// both candidates read poorly enough that procedural stone-grey
+// stroke (PixiRenderer.syncWalls' fallback path) is the better
+// shipping default for desert walls until a regenerated source
+// lands. PNGs stay on disk (game-assets/ sources + the v2.9.2
+// processed PNGs at src/render/sprites/walls/wall-desert*.png)
+// per the local-file-preservation rule; nothing in the bundle
+// references them so they're dead weight only on disk, not in the
+// served app. WallSandbox keeps its loadWallAltTextures path for
+// the day someone re-enables the entry to A/B fresh candidates.
 
 interface WallVariantUrls {
   primary: string;
@@ -28,7 +36,6 @@ interface WallVariantUrls {
 
 const VARIANT_URLS: Partial<Record<BiomeId, WallVariantUrls>> = {
   grass: { primary: grassWallUrl, alt: grassWall1Url },
-  desert: { primary: desertWallUrl, alt: desertWall1Url },
 };
 
 const primaryTextures = new Map<BiomeId, Texture>();
