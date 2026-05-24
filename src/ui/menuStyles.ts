@@ -105,6 +105,40 @@ export const compactButtonStyle: CSSProperties = {
   borderImageWidth: `${BUTTON_WOOD_COMPACT_BORDER_WIDTH}px`,
 };
 
+// v2.9.7: miniButtonStyle — wood-themed action button sized for the
+// in-game NodeInfoPanel (panel is 200 px wide, so each row button can
+// only afford ~180 px of width). Same 9-slice wood plaque as buttonStyle
+// but with a shorter border-image width so the iron studs stay visually
+// proportional at this tiny size. Use this for ANY in-game button that
+// sits inside a HUD panel (Concoct, Upgrade, Cancel, Cast on click).
+const BUTTON_WOOD_MINI_BORDER_WIDTH = 9;
+
+export const miniButtonStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  width: '100%',
+  minHeight: 26,
+  padding: '4px 8px',
+  margin: 0,
+  fontSize: 11,
+  fontWeight: 700,
+  fontFamily: 'inherit',
+  color: '#f3e8d0',
+  background: 'transparent',
+  border: `${BUTTON_WOOD_MINI_BORDER_WIDTH}px solid transparent`,
+  borderImageSource: `url(${buttonWoodUrl})`,
+  borderImageSlice: BUTTON_WOOD_SLICE,
+  borderImageWidth: `${BUTTON_WOOD_MINI_BORDER_WIDTH}px`,
+  borderImageRepeat: 'stretch',
+  borderImageOutset: 0,
+  borderRadius: 0,
+  cursor: 'pointer',
+  letterSpacing: '0.02em',
+  textAlign: 'left',
+  textShadow: '0 1px 2px rgba(0,0,0,0.75), 0 0 4px rgba(0,0,0,0.4)',
+};
+
 // v2.9.6: levelButtonStyle uses the level-button.png as a simple
 // background-image at fixed compact dimensions — the 9-slice approach
 // stretched one axis whenever the parent grid cell wasn't perfectly
@@ -114,14 +148,21 @@ export const compactButtonStyle: CSSProperties = {
 // each axis, which is imperceptible on the wooden plaque texture.
 // Justify-center on the grid cell so cells wider than the button
 // don't stretch it.
-const LEVEL_BUTTON_SIZE = 112;
+// v2.9.7: bumped from 112 to 128 to give text more breathing room
+// inside the inner wood plaque (iron frame eats ~22% per side, so the
+// inner usable area at 128 is ~80 px square — enough for two-line
+// names like "Three-Way Cold War" without overflowing the frame).
+const LEVEL_BUTTON_SIZE = 128;
+// Inner-padding values keep ALL text strictly within the central
+// wood plaque (away from the iron frame + corner studs).
+const LEVEL_BUTTON_INNER_INSET = 18;
 
 export const levelButtonStyle: CSSProperties = {
   width: LEVEL_BUTTON_SIZE,
   height: LEVEL_BUTTON_SIZE,
-  padding: '12px 10px',
+  padding: `${LEVEL_BUTTON_INNER_INSET}px ${LEVEL_BUTTON_INNER_INSET}px`,
   margin: 0,
-  fontSize: 12,
+  fontSize: 10,
   fontWeight: 700,
   fontFamily: 'inherit',
   color: '#f3e8d0',
@@ -132,7 +173,8 @@ export const levelButtonStyle: CSSProperties = {
   border: 'none',
   borderRadius: 0,
   cursor: 'pointer',
-  letterSpacing: '0.03em',
+  letterSpacing: '0.02em',
+  lineHeight: 1.1,
   textShadow: '0 1px 2px rgba(0,0,0,0.75), 0 0 4px rgba(0,0,0,0.4)',
   display: 'flex',
   flexDirection: 'column',
@@ -142,6 +184,9 @@ export const levelButtonStyle: CSSProperties = {
   // Grid cell may be wider than the button — center inside the cell
   // instead of stretching.
   justifySelf: 'center',
+  // Belt-and-suspenders: even if a future level name is absurdly long,
+  // clip rather than spill over the iron frame.
+  overflow: 'hidden',
 };
 
 export const linkStyle: CSSProperties = {

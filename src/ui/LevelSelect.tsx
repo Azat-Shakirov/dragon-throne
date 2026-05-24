@@ -125,12 +125,20 @@ export function LevelSelect() {
                 cursor: unlocked ? 'pointer' : 'not-allowed',
               }}
             >
-              <span style={{ fontSize: 26, fontWeight: 800 }}>{id}</span>
-              <span style={{ fontSize: 13, color: '#bbc3cf' }}>{lv.name}</span>
-              <span style={{ fontSize: 13, color: '#f5c95b', letterSpacing: '0.1em' }}>
+              <span style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{id}</span>
+              <span style={{
+                fontSize: 10,
+                color: '#f3e8d0',
+                textAlign: 'center',
+                lineHeight: 1.1,
+                wordBreak: 'break-word',
+                hyphens: 'auto',
+                maxWidth: '100%',
+              }}>{lv.name}</span>
+              <span style={{ fontSize: 12, color: '#f5c95b', letterSpacing: '0.08em', lineHeight: 1 }}>
                 {[0, 1, 2].map((i) => (i < stars ? STAR_FILLED : STAR_EMPTY)).join('')}
               </span>
-              {!unlocked && <span style={{ fontSize: 11, color: '#7a8090' }}>locked</span>}
+              {!unlocked && <span style={{ fontSize: 9, color: '#bbc3cf', lineHeight: 1 }}>locked</span>}
             </button>
           );
         })}

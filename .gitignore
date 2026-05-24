@@ -55,6 +55,7 @@ $RECYCLE.BIN/
 
 # Project artifacts
 .claude/session-end.log
+.screenshots/
 
 # Local audio placeholders. The MP3 the author dropped into sounds/
 # is a third-party track used for local playtest only; not licensed

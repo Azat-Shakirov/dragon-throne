@@ -11,6 +11,7 @@ import { createSessionState, type SessionState } from '../render/SessionState';
 import { TICK_MS } from '../types';
 import { UnitBar } from './UnitBar';
 import { PauseMenu } from './PauseMenu';
+import { compactButtonStyle } from './menuStyles';
 import { NodeInfoPanel } from './NodeInfoPanel';
 import { TutorialOverlay } from './TutorialOverlay';
 import { HudTimer } from './HudTimer';
@@ -281,7 +282,7 @@ export function GameView({ levelId }: GameViewProps) {
         >
           {error}
           <div style={{ marginTop: 8 }}>
-            <button onClick={exitToMenu} style={{ marginRight: 8 }}>Main menu</button>
+            <button onClick={exitToMenu} style={compactButtonStyle}>Main menu</button>
           </div>
         </div>
       )}

@@ -27,6 +27,8 @@ import {
   StarveIcon,
   SpellIcon,
 } from './infoIcons';
+// v2.9.7: in-game action buttons inherit the castle wood-plaque theme.
+import { miniButtonStyle } from './menuStyles';
 
 interface Props {
   engine: GameEngine;
@@ -288,7 +290,7 @@ export function NodeInfoPanel({ engine, session, hoveredNodeId, canvasEl }: Prop
                 }}
                 disabled={!affordable}
                 style={{
-                  ...buttonStyle,
+                  ...miniButtonStyle,
                   opacity: affordable ? 1 : 0.45,
                   cursor: affordable ? 'pointer' : 'not-allowed',
                 }}
@@ -305,7 +307,7 @@ export function NodeInfoPanel({ engine, session, hoveredNodeId, canvasEl }: Prop
         <div style={sectionStyle}>
           <button
             onClick={() => { playSfx('click'); engine.cancelConcoction(node.id); }}
-            style={{ ...buttonStyle, color: '#ffb38a' }}
+            style={{ ...miniButtonStyle, color: '#ffb38a', justifyContent: 'center' }}
           >
             Cancel concoction
           </button>
@@ -315,7 +317,7 @@ export function NodeInfoPanel({ engine, session, hoveredNodeId, canvasEl }: Prop
                 playSfx('click');
                 session.targetingFromLabId = node.id;
               }}
-              style={{ ...buttonStyle, color: '#9be29b' }}
+              style={{ ...miniButtonStyle, color: '#9be29b', justifyContent: 'center' }}
             >
               Cast on click…
             </button>
@@ -371,7 +373,7 @@ function renderUpgradeButtons(engine: GameEngine, node: ReturnType<GameEngine['w
             onClick={() => { playSfx('click'); if (affordable) o.onPick(); }}
             disabled={!affordable}
             style={{
-              ...buttonStyle,
+              ...miniButtonStyle,
               opacity: affordable ? 1 : 0.45,
               cursor: affordable ? 'pointer' : 'not-allowed',
             }}
@@ -476,19 +478,6 @@ const sectionLabel: React.CSSProperties = {
   textTransform: 'uppercase',
   letterSpacing: 0.5,
   opacity: 0.55,
-};
-
-const buttonStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  background: 'rgba(255,255,255,0.06)',
-  border: '1px solid rgba(255,255,255,0.10)',
-  borderRadius: 4,
-  padding: '5px 8px',
-  color: '#e8e8e8',
-  fontSize: 12,
-  textAlign: 'left',
 };
 
 const costStyle: React.CSSProperties = {
