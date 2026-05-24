@@ -158,6 +158,14 @@ export class PixiRenderer {
   private readonly beams: RenderedBeam[] = [];
   private readonly deathPuffs: DeathPuff[] = [];
   private readonly activeSpellOverlays: ActiveSpellOverlay[] = [];
+  // v2.9.6: per-node owner snapshot across frames so we can detect
+  // a non-null → null transition (i.e. a freeze cast happened
+  // mid-tick). Lets the renderer spawn the freeze overlay for AI
+  // casts, which never go through the InputController's
+  // spawnSpellOverlay callback. Naturally-neutral nodes that start
+  // with ownerId === null don't trigger because the first observed
+  // value is null (no prior non-null state).
+  private readonly lastNodeOwners = new Map<string, string | null>();
   // Wall sprite per biome — placed once at the polyline's bbox and
   // retained across frames (walls are static per level). Cleared on
   // level change inside syncWalls.
@@ -275,6 +283,7 @@ export class PixiRenderer {
     this.ingestTowerShots(recentTowerShots, world, nowMs);
     this.drawTowerBeams(nowMs, world);
     this.drawDeathPuffs(nowMs);
+    this.observeFreezeTransitions(world, nowMs);
     this.drawSpellOverlays(nowMs, world);
     this.selectionBoxView.update(session.boxSelect);
     this.drawRipples(nowMs);
@@ -752,6 +761,37 @@ export class PixiRenderer {
       persistent,
       targetNodeId,
     });
+  }
+
+  // v2.9.6: walk every node each frame; if a node's owner went from
+  // non-null to null since the last frame, that's a freeze cast that
+  // happened either via the InputController path (human cast — the
+  // overlay may already exist via spawnSpellOverlay's call, and the
+  // dedup loop in spawnSpellOverlay catches the duplicate) OR via an
+  // AI cast (no InputController involvement; this is the only path
+  // that catches it). Cleanup: remove nodes from the snapshot that
+  // are no longer in the world (defensive — nodes don't get removed
+  // in MVP, but future map-rotation features might).
+  private observeFreezeTransitions(world: World, nowMs: number): void {
+    for (const id of world.nodeOrder) {
+      const node = world.nodes.get(id);
+      if (!node) continue;
+      const last = this.lastNodeOwners.get(id);
+      const current = node.ownerId;
+      // Transition non-null → null = the node was just frozen.
+      // `last === undefined` (first observation) doesn't count — that
+      // would false-trigger on naturally-neutral nodes at level load.
+      if (last !== undefined && last !== null && current === null) {
+        this.spawnSpellOverlay('freeze', id, node.position.x, node.position.y, nowMs);
+      }
+      this.lastNodeOwners.set(id, current);
+    }
+    // Defensive GC of stale entries.
+    if (this.lastNodeOwners.size > world.nodes.size * 2) {
+      for (const id of this.lastNodeOwners.keys()) {
+        if (!world.nodes.has(id)) this.lastNodeOwners.delete(id);
+      }
+    }
   }
 
   // v2.9.4: drawSpellOverlays takes the world so it can tear down

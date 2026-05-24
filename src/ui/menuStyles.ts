@@ -89,42 +89,59 @@ export const buttonDangerStyle: CSSProperties = {
   color: '#ffb3a8',
 };
 
-// 9-slice for level-button.png (square, 446×512 after rembg). Metal
-// corners are large + square; bigger slice values than the menu button.
-const LEVEL_BUTTON_SLICE = '110 110 110 110 fill';
-const LEVEL_BUTTON_BORDER_WIDTH = 20;
+// v2.9.6: compact variant for overlay menus (PauseMenu). Smaller
+// border-image-width keeps the iron studs proportional at the
+// smaller button size. Same 9-slice source — just tuned for tight
+// vertical real estate inside a pause card.
+const BUTTON_WOOD_COMPACT_BORDER_WIDTH = 12;
 
-// Square tile button for LevelSelect grid. CSS aspect-ratio: 1
-// forces height = width regardless of the grid cell's natural
-// width — the v2.9.4 build was rectangular because grid cells were
-// ~200×124. The level-button.png source is square, so a square
-// tile gives a 9-slice without distortion in either axis.
+export const compactButtonStyle: CSSProperties = {
+  ...buttonStyle,
+  minWidth: 180,
+  minHeight: 42,
+  padding: '6px 16px',
+  fontSize: 14,
+  border: `${BUTTON_WOOD_COMPACT_BORDER_WIDTH}px solid transparent`,
+  borderImageWidth: `${BUTTON_WOOD_COMPACT_BORDER_WIDTH}px`,
+};
+
+// v2.9.6: levelButtonStyle uses the level-button.png as a simple
+// background-image at fixed compact dimensions — the 9-slice approach
+// stretched one axis whenever the parent grid cell wasn't perfectly
+// square (and produced visibly oversized buttons in the v2.9.5 grid).
+// Fixed 112×112 button, asset rendered at full size with backgroundSize
+// '100% 100%'; the asset's natural 446:512 aspect squashes by ~13% in
+// each axis, which is imperceptible on the wooden plaque texture.
+// Justify-center on the grid cell so cells wider than the button
+// don't stretch it.
+const LEVEL_BUTTON_SIZE = 112;
+
 export const levelButtonStyle: CSSProperties = {
-  width: '100%',
-  aspectRatio: '1 / 1',
-  minWidth: 0,
-  padding: '14px 12px',
+  width: LEVEL_BUTTON_SIZE,
+  height: LEVEL_BUTTON_SIZE,
+  padding: '12px 10px',
   margin: 0,
-  fontSize: 13,
+  fontSize: 12,
   fontWeight: 700,
   fontFamily: 'inherit',
   color: '#f3e8d0',
-  background: 'transparent',
-  border: `${LEVEL_BUTTON_BORDER_WIDTH}px solid transparent`,
-  borderImageSource: `url(${levelButtonUrl})`,
-  borderImageSlice: LEVEL_BUTTON_SLICE,
-  borderImageWidth: `${LEVEL_BUTTON_BORDER_WIDTH}px`,
-  borderImageRepeat: 'stretch',
-  borderImageOutset: 0,
+  backgroundImage: `url(${levelButtonUrl})`,
+  backgroundSize: '100% 100%',
+  backgroundRepeat: 'no-repeat',
+  backgroundColor: 'transparent',
+  border: 'none',
   borderRadius: 0,
   cursor: 'pointer',
-  letterSpacing: '0.04em',
+  letterSpacing: '0.03em',
   textShadow: '0 1px 2px rgba(0,0,0,0.75), 0 0 4px rgba(0,0,0,0.4)',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  gap: 4,
+  gap: 2,
+  // Grid cell may be wider than the button — center inside the cell
+  // instead of stretching.
+  justifySelf: 'center',
 };
 
 export const linkStyle: CSSProperties = {
