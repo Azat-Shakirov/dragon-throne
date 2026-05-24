@@ -10,7 +10,7 @@ import { useProgressStore, isLevelUnlocked } from '../store/progressStore';
 import { loadContent } from '../engine/content/ContentLoader';
 import { playSfx } from '../audio/sfxPlayer';
 import { ArchetypeIcon } from './archetypeIcons';
-import { levelButtonStyle, linkStyle, screenStyle, titleStyle } from './menuStyles';
+import { chipSelectedStyle, chipStyle, levelButtonStyle, linkStyle, screenStyle, titleStyle } from './menuStyles';
 import type { ArchetypeId } from '../engine/content/ContentLibrary';
 
 const STAR_FILLED = '★';
@@ -20,10 +20,6 @@ const STAR_EMPTY = '☆';
 // Object.keys(content.archetypes) so no accidental neutral / future
 // non-playable archetype can sneak into the picker.
 const ARCHETYPE_ORDER: ArchetypeId[] = ['infantry', 'archer', 'knight', 'cavalry', 'mage'];
-
-// Azure (the user's locked color on challenge levels) — drives the
-// selected-chip border + tint.
-const AZURE_HEX = '#3da9fc';
 
 export function LevelSelect() {
   const navigate = useSessionStore((s) => s.navigate);
@@ -71,12 +67,7 @@ export function LevelSelect() {
                   playSfx('click');
                   setPlayerStartArchetype(selected ? null : aid);
                 }}
-                style={{
-                  ...chipStyle,
-                  borderColor: selected ? AZURE_HEX : 'rgba(255,255,255,0.15)',
-                  background: selected ? `${AZURE_HEX}20` : 'rgba(255,255,255,0.04)',
-                  color: selected ? AZURE_HEX : '#e8e8e8',
-                }}
+                style={selected ? chipSelectedStyle : chipStyle}
                 title={arch.description}
               >
                 <span style={iconWrapStyle}>
@@ -90,7 +81,6 @@ export function LevelSelect() {
             onClick={() => { playSfx('click'); setPlayerStartArchetype(null); }}
             style={{
               ...chipStyle,
-              padding: '6px 10px',
               opacity: playerStartArchetype === null ? 0.45 : 1,
               cursor: playerStartArchetype === null ? 'default' : 'pointer',
             }}
@@ -171,21 +161,11 @@ const pickerLabelStyle: React.CSSProperties = {
   fontSize: 12,
   letterSpacing: '0.08em',
   textTransform: 'uppercase',
-  color: '#8a92a0',
+  // v2.9.8: bumped contrast + added text-shadow so the kicker reads
+  // cleanly on top of the painterly menu-background.
+  color: '#c8cfdc',
   marginRight: 4,
-};
-
-const chipStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '6px 12px',
-  border: '1px solid rgba(255,255,255,0.15)',
-  borderRadius: 4,
-  fontSize: 12,
-  color: '#e8e8e8',
-  background: 'rgba(255,255,255,0.04)',
-  cursor: 'pointer',
+  textShadow: '0 1px 2px rgba(0,0,0,0.85)',
 };
 
 const iconWrapStyle: React.CSSProperties = {

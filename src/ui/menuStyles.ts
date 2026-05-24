@@ -10,11 +10,22 @@
 // where 5:1 menu buttons stretched the 1.67:1 source asset.
 // v2.9.4: levelButtonStyle uses the square level-button.png — better
 // aspect for the square-ish LevelSelect grid tiles.
+// v2.9.8: menu/intro buttons retuned to mini-button proportions (user
+// preferred the tighter wood plaque feel of the in-game HUD buttons).
+// menu-background.png wired into screenStyle as a full-screen painterly
+// backdrop with a darkening overlay so the wood UI reads cleanly.
 
 import type { CSSProperties } from 'react';
 import buttonWoodUrl from '../render/sprites/ui/button-wood.png';
 import levelButtonUrl from '../render/sprites/ui/level-button.png';
+import menuBackgroundUrl from '../render/sprites/ui/menu-background.png';
 
+// v2.9.8: layered backgrounds — the dark radial gradient sits ON TOP
+// of the painterly menu image as a darkening veil so the white title
+// + warm wood buttons stay legible. Background-size 'cover' so the
+// image fills the viewport on any aspect; positioned to bias the
+// central castle vertically a bit higher (the image's focal point
+// sits slightly above center).
 export const screenStyle: CSSProperties = {
   position: 'fixed',
   inset: 0,
@@ -24,7 +35,10 @@ export const screenStyle: CSSProperties = {
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'radial-gradient(circle at 50% 35%, #14141c 0%, #06060a 70%)',
+  backgroundImage: `linear-gradient(180deg, rgba(6,6,10,0.55) 0%, rgba(6,6,10,0.75) 100%), url(${menuBackgroundUrl})`,
+  backgroundSize: 'cover, cover',
+  backgroundPosition: 'center, center',
+  backgroundRepeat: 'no-repeat, no-repeat',
   color: '#eee',
   fontFamily: 'system-ui, -apple-system, sans-serif',
   zIndex: 100,
@@ -55,14 +69,19 @@ export const subtitleStyle: CSSProperties = {
 // from the top/bottom edges and ~75 px from the left/right edges.
 // `fill` keeps the wood interior visible as the button background.
 const BUTTON_WOOD_SLICE = '95 75 95 75 fill';
-const BUTTON_WOOD_BORDER_WIDTH = 18; // visible CSS border thickness
+// v2.9.8: menu buttonStyle dropped from border 18 → 11 and minWidth
+// 260→200 / minHeight 60→44 / fontSize 16→14 / padding 12×24 → 6×16.
+// The user preferred the in-game mini-button look (proportionally
+// thinner iron frame, more compact). Border-image-width scales to
+// keep the iron studs the right visual weight at this smaller size.
+const BUTTON_WOOD_BORDER_WIDTH = 11;
 
 export const buttonStyle: CSSProperties = {
-  minWidth: 260,
-  minHeight: 60,
-  padding: '12px 24px',
-  margin: '6px 0',
-  fontSize: 16,
+  minWidth: 200,
+  minHeight: 44,
+  padding: '6px 18px',
+  margin: '5px 0',
+  fontSize: 14,
   fontWeight: 700,
   fontFamily: 'inherit',
   color: '#f3e8d0',
@@ -89,20 +108,14 @@ export const buttonDangerStyle: CSSProperties = {
   color: '#ffb3a8',
 };
 
-// v2.9.6: compact variant for overlay menus (PauseMenu). Smaller
-// border-image-width keeps the iron studs proportional at the
-// smaller button size. Same 9-slice source — just tuned for tight
-// vertical real estate inside a pause card.
-const BUTTON_WOOD_COMPACT_BORDER_WIDTH = 12;
-
+// v2.9.6 → v2.9.8: compact variant for overlay menus (PauseMenu).
+// Now identical to buttonStyle (the v2.9.8 retune collapsed both
+// down to the same proportionally-tight wood plaque). Kept as a
+// separate export so callsites can semantically opt into the
+// "overlay menu" variant — if they later need to diverge again it's
+// one line to change here without touching call sites.
 export const compactButtonStyle: CSSProperties = {
   ...buttonStyle,
-  minWidth: 180,
-  minHeight: 42,
-  padding: '6px 16px',
-  fontSize: 14,
-  border: `${BUTTON_WOOD_COMPACT_BORDER_WIDTH}px solid transparent`,
-  borderImageWidth: `${BUTTON_WOOD_COMPACT_BORDER_WIDTH}px`,
 };
 
 // v2.9.7: miniButtonStyle — wood-themed action button sized for the
@@ -153,14 +166,20 @@ export const miniButtonStyle: CSSProperties = {
 // inner usable area at 128 is ~80 px square — enough for two-line
 // names like "Three-Way Cold War" without overflowing the frame).
 const LEVEL_BUTTON_SIZE = 128;
-// Inner-padding values keep ALL text strictly within the central
-// wood plaque (away from the iron frame + corner studs).
-const LEVEL_BUTTON_INNER_INSET = 18;
+// v2.9.8: symmetric padding. The level-button.png wood plaque IS
+// geometrically centered (verified via Pillow column-scan of the
+// 446×512 source: inner-wood vertical bounds ~y=221–353 → center
+// y=287, asset center y=256 — essentially centered modulo the
+// corner-stud weighting). With `justify-content: center` the
+// number+name+stars stack sits on the wood midline at all tile
+// sizes without an asymmetric kludge.
+const LEVEL_BUTTON_PADDING_V = 18;
+const LEVEL_BUTTON_PADDING_X = 16;
 
 export const levelButtonStyle: CSSProperties = {
   width: LEVEL_BUTTON_SIZE,
   height: LEVEL_BUTTON_SIZE,
-  padding: `${LEVEL_BUTTON_INNER_INSET}px ${LEVEL_BUTTON_INNER_INSET}px`,
+  padding: `${LEVEL_BUTTON_PADDING_V}px ${LEVEL_BUTTON_PADDING_X}px`,
   margin: 0,
   fontSize: 10,
   fontWeight: 700,
@@ -175,12 +194,13 @@ export const levelButtonStyle: CSSProperties = {
   cursor: 'pointer',
   letterSpacing: '0.02em',
   lineHeight: 1.1,
+  textAlign: 'center',
   textShadow: '0 1px 2px rgba(0,0,0,0.75), 0 0 4px rgba(0,0,0,0.4)',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  gap: 2,
+  gap: 3,
   // Grid cell may be wider than the button — center inside the cell
   // instead of stretching.
   justifySelf: 'center',
@@ -189,14 +209,70 @@ export const levelButtonStyle: CSSProperties = {
   overflow: 'hidden',
 };
 
+// v2.9.8: "back" / inline link is now a wood-themed mini-button instead
+// of bare text, so it matches the rest of the castle UI. Kept smaller
+// than the full menu buttonStyle so it still reads as a secondary nav
+// affordance (auto width hugs the label "← back").
+const BUTTON_WOOD_LINK_BORDER_WIDTH = 9;
+
 export const linkStyle: CSSProperties = {
-  marginTop: 32,
-  fontSize: 13,
-  color: '#7a8090',
+  marginTop: 24,
+  minHeight: 30,
+  padding: '4px 14px',
+  fontSize: 12,
+  fontWeight: 700,
+  fontFamily: 'inherit',
+  color: '#f3e8d0',
   background: 'transparent',
-  border: 'none',
+  border: `${BUTTON_WOOD_LINK_BORDER_WIDTH}px solid transparent`,
+  borderImageSource: `url(${buttonWoodUrl})`,
+  borderImageSlice: BUTTON_WOOD_SLICE,
+  borderImageWidth: `${BUTTON_WOOD_LINK_BORDER_WIDTH}px`,
+  borderImageRepeat: 'stretch',
+  borderImageOutset: 0,
+  borderRadius: 0,
   cursor: 'pointer',
   letterSpacing: '0.05em',
+  textShadow: '0 1px 2px rgba(0,0,0,0.75), 0 0 4px rgba(0,0,0,0.4)',
+};
+
+// v2.9.8: chipStyle — wood plaque for the LevelSelect archetype
+// picker. Same 9-slice as miniButtonStyle so the chips look like
+// a row of small castle buttons. Selected state is signalled by a
+// blue inner glow + brighter label (the wood texture itself can't
+// change, so the affordance lives in shadow + color).
+const BUTTON_WOOD_CHIP_BORDER_WIDTH = 9;
+
+export const chipStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  minHeight: 30,
+  padding: '4px 12px',
+  margin: 0,
+  fontSize: 12,
+  fontWeight: 700,
+  fontFamily: 'inherit',
+  color: '#f3e8d0',
+  background: 'transparent',
+  border: `${BUTTON_WOOD_CHIP_BORDER_WIDTH}px solid transparent`,
+  borderImageSource: `url(${buttonWoodUrl})`,
+  borderImageSlice: BUTTON_WOOD_SLICE,
+  borderImageWidth: `${BUTTON_WOOD_CHIP_BORDER_WIDTH}px`,
+  borderImageRepeat: 'stretch',
+  borderImageOutset: 0,
+  borderRadius: 0,
+  cursor: 'pointer',
+  letterSpacing: '0.03em',
+  textShadow: '0 1px 2px rgba(0,0,0,0.75), 0 0 4px rgba(0,0,0,0.4)',
+};
+
+export const chipSelectedStyle: CSSProperties = {
+  ...chipStyle,
+  // Azure glow + brighter label to signal selection on top of the
+  // wood plaque (the underlying texture can't itself change).
+  color: '#bfe6ff',
+  filter: 'drop-shadow(0 0 6px rgba(61, 169, 252, 0.85))',
 };
 
 export const cardStyle: CSSProperties = {
