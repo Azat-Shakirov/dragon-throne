@@ -16,6 +16,35 @@
         font-family: system-ui, -apple-system, sans-serif;
         color: #eee;
       }
+      /* v2.10.0: hover/active feedback for the wood-plaque menu buttons
+         (.dt-btn) and level tiles (.dt-level-btn). Lives here as CSS
+         classes because the buttons use inline styles, and :hover can't
+         be expressed inline. Only `filter`/`transform` are touched —
+         neither is set inline, so there's no specificity clash with the
+         inline border-image/background. :not(:disabled) keeps locked
+         levels and disabled buttons inert. */
+      .dt-btn {
+        transition: filter 120ms ease, transform 120ms ease;
+      }
+      .dt-btn:hover:not(:disabled) {
+        filter: brightness(1.13) drop-shadow(0 0 7px rgba(245, 200, 120, 0.55));
+        transform: translateY(-1px);
+      }
+      .dt-btn:active:not(:disabled) {
+        transform: translateY(0);
+        filter: brightness(1.06);
+      }
+      .dt-level-btn {
+        transition: filter 120ms ease, transform 120ms ease;
+      }
+      .dt-level-btn:hover:not(:disabled) {
+        filter: brightness(1.13) drop-shadow(0 0 9px rgba(245, 200, 120, 0.6));
+        transform: scale(1.06);
+        z-index: 1;
+      }
+      .dt-level-btn:active:not(:disabled) {
+        transform: scale(1);
+      }
     </style>
   </head>
   <body>

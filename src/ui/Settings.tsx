@@ -35,17 +35,18 @@ export function Settings() {
           onChange={setSfxVolume}
         />
         <p style={{ color: '#7a8090', fontSize: 12, marginTop: 8 }}>
-          Music plays on a loop. SFX use synthesized fallbacks until real files are dropped into /sfx/.
+          Separate looping tracks play in the menus and in-game. SFX use synthesized fallbacks until real files are dropped into /sfx/.
         </p>
         <hr style={{ border: 'none', borderTop: '1px solid rgba(120, 140, 180, 0.18)', margin: '20px 0' }} />
         {!confirming ? (
-          <button style={buttonDangerStyle} onClick={() => { playSfx('click'); setConfirming(true); }}>
+          <button className="dt-btn" style={buttonDangerStyle} onClick={() => { playSfx('click'); setConfirming(true); }}>
             Reset progress
           </button>
         ) : (
           <div>
             <p style={{ marginTop: 0 }}>This will erase all level progress and stars.</p>
             <button
+              className="dt-btn"
               style={buttonDangerStyle}
               onClick={() => {
                 playSfx('click');
@@ -55,13 +56,13 @@ export function Settings() {
             >
               Yes, reset
             </button>
-            <button style={{ ...buttonStyle, marginLeft: 8 }} onClick={() => { playSfx('click'); setConfirming(false); }}>
+            <button className="dt-btn" style={{ ...buttonStyle, marginLeft: 8 }} onClick={() => { playSfx('click'); setConfirming(false); }}>
               Cancel
             </button>
           </div>
         )}
       </div>
-      <button style={linkStyle} onClick={() => { playSfx('click'); navigate('menu'); }}>← back</button>
+      <button className="dt-btn" style={linkStyle} onClick={() => { playSfx('click'); navigate('menu'); }}>← back</button>
     </div>
   );
 }

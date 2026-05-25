@@ -8,7 +8,7 @@ export function QuitScreen() {
     <div style={screenStyle}>
       <div style={{ ...titleStyle, fontSize: 36, marginBottom: 16 }}>Thanks for playing.</div>
       <p style={{ color: '#7a8090', marginBottom: 36 }}>You can close this tab, or head back to the menu.</p>
-      <button style={buttonStyle} onClick={() => { playSfx('click'); navigate('menu'); }}>Main menu</button>
+      <button className="dt-btn" style={buttonStyle} onClick={() => { playSfx('click'); navigate('menu'); }}>Main menu</button>
     </div>
   );
 }

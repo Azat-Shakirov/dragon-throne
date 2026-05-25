@@ -162,10 +162,14 @@ export const miniButtonStyle: CSSProperties = {
 // Justify-center on the grid cell so cells wider than the button
 // don't stretch it.
 // v2.9.7: bumped from 112 to 128 to give text more breathing room
-// inside the inner wood plaque (iron frame eats ~22% per side, so the
-// inner usable area at 128 is ~80 px square — enough for two-line
-// names like "Three-Way Cold War" without overflowing the frame).
-const LEVEL_BUTTON_SIZE = 128;
+// inside the inner wood plaque (iron frame eats ~22% per side).
+// v2.10.0: the grid is now 10 columns spanning ~96vw with no scroll,
+// so tiles size to their grid cell (width 100% + aspect-ratio 1/1)
+// instead of a fixed pixel size. On a 1280–1920 viewport each tile
+// lands roughly 120–180 px square — same ballpark as the old 128, so
+// the text proportions still read. maxWidth caps it on ultra-wide
+// monitors so a row of 10 doesn't balloon into oversized plaques.
+const LEVEL_BUTTON_MAX_SIZE = 150;
 // v2.9.8: symmetric padding. The level-button.png wood plaque IS
 // geometrically centered (verified via Pillow column-scan of the
 // 446×512 source: inner-wood vertical bounds ~y=221–353 → center
@@ -173,12 +177,15 @@ const LEVEL_BUTTON_SIZE = 128;
 // corner-stud weighting). With `justify-content: center` the
 // number+name+stars stack sits on the wood midline at all tile
 // sizes without an asymmetric kludge.
-const LEVEL_BUTTON_PADDING_V = 18;
-const LEVEL_BUTTON_PADDING_X = 16;
+const LEVEL_BUTTON_PADDING_V = 16;
+const LEVEL_BUTTON_PADDING_X = 14;
 
 export const levelButtonStyle: CSSProperties = {
-  width: LEVEL_BUTTON_SIZE,
-  height: LEVEL_BUTTON_SIZE,
+  width: '100%',
+  maxWidth: LEVEL_BUTTON_MAX_SIZE,
+  // Square tiles regardless of how wide the grid cell ends up.
+  aspectRatio: '1 / 1',
+  boxSizing: 'border-box',
   padding: `${LEVEL_BUTTON_PADDING_V}px ${LEVEL_BUTTON_PADDING_X}px`,
   margin: 0,
   fontSize: 10,

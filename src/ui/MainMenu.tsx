@@ -14,15 +14,16 @@ export function MainMenu() {
     <div style={screenStyle}>
       <div style={titleStyle}>Dragon's Throne</div>
       <div style={subtitleStyle}>node capture · castle strategy</div>
-      <button style={buttonStyle} onClick={() => go('levelSelect')}>Play</button>
-      <button style={buttonStyle} onClick={() => go('settings')}>Settings</button>
-      <button style={buttonStyle} onClick={() => go('credits')}>Credits</button>
+      <button className="dt-btn" style={buttonStyle} onClick={() => go('levelSelect')}>Campaign</button>
+      <button className="dt-btn" style={buttonStyle} onClick={() => go('battleRoyale')}>Battle Royale</button>
+      <button className="dt-btn" style={buttonStyle} onClick={() => go('settings')}>Settings</button>
+      <button className="dt-btn" style={buttonStyle} onClick={() => go('credits')}>Credits</button>
       {DEV && (
-        <button style={buttonStyle} onClick={() => go('editor')}>
+        <button className="dt-btn" style={buttonStyle} onClick={() => go('editor')}>
           Level Editor (dev)
         </button>
       )}
-      <button style={buttonStyle} onClick={() => go('quit')}>Quit</button>
+      <button className="dt-btn" style={buttonStyle} onClick={() => go('quit')}>Quit</button>
     </div>
   );
 }

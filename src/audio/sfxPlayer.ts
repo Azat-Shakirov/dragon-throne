@@ -37,6 +37,14 @@ const fileGlob = import.meta.glob('/sfx/*.{mp3,ogg,wav,m4a}', {
   import: 'default',
 }) as Record<string, () => Promise<string>>;
 
+// Filename → event aliases, so a descriptively-named drop-in file still
+// maps to its event without forcing the user to rename it to the bare
+// event literal. Exact-event filenames (e.g. capture.mp3) still win;
+// aliases only kick in when the base name isn't already an event.
+const FILE_ALIASES: Record<string, SfxEvent> = {
+  'wood-tap-click': 'click',
+};
+
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let masterVolume = 0.8;
@@ -98,7 +106,10 @@ function loadFiles(): void {
   if (ctx === null) return;
   for (const path of Object.keys(fileGlob)) {
     const base = path.split('/').pop()?.replace(/\.[^.]+$/, '') ?? '';
-    if (!isSfxEvent(base)) continue;
+    const event: SfxEvent | undefined = isSfxEvent(base)
+      ? base
+      : FILE_ALIASES[base.toLowerCase()];
+    if (!event) continue;
     const loader = fileGlob[path];
     if (!loader) continue;
     void loader()
@@ -106,8 +117,8 @@ function loadFiles(): void {
       .then((res) => res.arrayBuffer())
       .then((buf) => ctx!.decodeAudioData(buf))
       .then((audio) => {
-        decodedBuffers.set(base, audio);
-        console.info(`[sfx] loaded ${base} from /sfx/`);
+        decodedBuffers.set(event, audio);
+        console.info(`[sfx] loaded ${event} (${base}) from /sfx/`);
       })
       .catch(() => {
         // Silent failure — synth fallback covers the event.

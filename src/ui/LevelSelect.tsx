@@ -51,7 +51,7 @@ export function LevelSelect() {
   return (
     <div style={screenStyle}>
       {/* v2.9.9: back button anchored top-left at full menu-button size. */}
-      <button style={backButtonStyle} onClick={() => { playSfx('click'); navigate('menu'); }}>
+      <button className="dt-btn" style={backButtonStyle} onClick={() => { playSfx('click'); navigate('menu'); }}>
         ← back
       </button>
       <div style={{ ...titleStyle, fontSize: 36, marginBottom: 24 }}>Choose a Level</div>
@@ -92,14 +92,16 @@ export function LevelSelect() {
           </button>
         </div>
       )}
+      {/* v2.10.0: 10 columns spanning almost the full page, no scroll
+          bar — the 40 campaign levels fit in 4 rows. justify-items
+          center so each square tile sits centered in its cell. */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: 12,
-        maxWidth: 900,
-        width: '90%',
-        maxHeight: '70vh',
-        overflowY: 'auto',
+        gridTemplateColumns: 'repeat(10, 1fr)',
+        gap: 10,
+        width: '96vw',
+        maxWidth: 1700,
+        justifyItems: 'center',
         padding: '4px 8px',
       }}>
         {sortedIds.map((id) => {
@@ -109,6 +111,7 @@ export function LevelSelect() {
           return (
             <button
               key={id}
+              className="dt-level-btn"
               disabled={!unlocked}
               onClick={() => { playSfx('click'); if (unlocked) startLevel(id); }}
               style={{

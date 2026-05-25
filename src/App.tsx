@@ -5,10 +5,11 @@
 import { useEffect } from 'react';
 import { useSessionStore } from './store/sessionStore';
 import { useProgressStore } from './store/progressStore';
-import { initMusicPlayer, setMusicVolume } from './audio/musicPlayer';
+import { initMusicPlayer, setMusicVolume, setMusicScene } from './audio/musicPlayer';
 import { initSfxPlayer, setSfxVolume } from './audio/sfxPlayer';
 import { MainMenu } from './ui/MainMenu';
 import { LevelSelect } from './ui/LevelSelect';
+import { BattleRoyale } from './ui/BattleRoyale';
 import { Settings } from './ui/Settings';
 import { Credits } from './ui/Credits';
 import { QuitScreen } from './ui/QuitScreen';
@@ -39,6 +40,14 @@ export default function App() {
   useEffect(() => {
     setMusicVolume(musicVolume);
   }, [musicVolume]);
+  // Swap the background track by scene: the in-game song plays during a
+  // live level, the menu melody everywhere else (menus, level select,
+  // settings, credits, battle-royale stub, dev sandboxes). Switching is
+  // driven off the route so the user never has to touch the volume slider
+  // crossing in/out of a level.
+  useEffect(() => {
+    setMusicScene(route === 'game' && selectedLevelId !== null ? 'game' : 'menu');
+  }, [route, selectedLevelId]);
   useEffect(() => {
     setSfxVolume(sfxVolume);
   }, [sfxVolume]);
@@ -74,6 +83,8 @@ export default function App() {
       return <MainMenu />;
     case 'levelSelect':
       return <LevelSelect />;
+    case 'battleRoyale':
+      return <BattleRoyale />;
     case 'settings':
       return <Settings />;
     case 'credits':

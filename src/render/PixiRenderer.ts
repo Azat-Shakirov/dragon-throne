@@ -42,6 +42,7 @@ import {
   loadProjectileTextures,
   getProjectileTexture,
   projectileForTowerLevel,
+  type ProjectileId,
 } from './sprites/projectileSprites';
 import { loadEffectTextures, getDeathPuffTexture } from './sprites/effectSprites';
 import { loadSpellTextures, getSpellTexture } from './sprites/spellSprites';
@@ -64,6 +65,10 @@ interface RenderedBeam {
   // v2.9.2: projectile texture (resolved from the firing tower's level).
   // When null, the beam renders as the v2.7-era solid-color line.
   projectile: ReturnType<typeof getProjectileTexture> | null;
+  // v2.10.0: which projectile this is, so drawTowerBeams can apply a
+  // per-type size scale (the ~square cannonball reads too big at the
+  // full long-edge size that suits the thin arrow/bolt).
+  projectileId: ProjectileId | null;
 }
 
 interface DeathPuff {
@@ -107,6 +112,16 @@ const DEATH_PUFF_BASE_SIZE_PX = 22;
 // so an arrow / bolt / cannonball's long edge equals a unit's height.
 // (At per-level visualScale this still scales together with the unit.)
 const PROJECTILE_LONG_EDGE_PX = 30;
+// v2.10.0: per-projectile long-edge multiplier. Arrow/bolt are long-thin,
+// so the full 30 px long edge gives them a unit-scale silhouette. The
+// cannonball is ~square, so the same 30 px long edge renders a solid
+// ~30 px ball that reads much heavier than a unit ("too big"). Scale it
+// down so the ball is roughly head/torso-sized relative to a unit.
+const PROJECTILE_SIZE_SCALE: Record<ProjectileId, number> = {
+  arrow: 1,
+  'ballista-bolt': 1,
+  cannonball: 0.55,
+};
 const SPELL_OVERLAY_LIFE_MS = 1100;
 const SPELL_OVERLAY_BASE_SIZE_PX = 120;
 
@@ -460,9 +475,8 @@ export class PixiRenderer {
       // (1→arrow, 2→ballista-bolt, 3+→cannonball). When the sprite
       // registry has the texture, drawTowerBeams will tween it from
       // tower → target instead of drawing the legacy color beam.
-      const projectile = tower
-        ? getProjectileTexture(projectileForTowerLevel(tower.level))
-        : null;
+      const projectileId = tower ? projectileForTowerLevel(tower.level) : null;
+      const projectile = projectileId ? getProjectileTexture(projectileId) : null;
       this.beams.push({
         fromX: shot.fromPos.x,
         fromY: shot.fromPos.y,
@@ -471,6 +485,7 @@ export class PixiRenderer {
         color,
         birthMs: nowMs,
         projectile,
+        projectileId,
       });
     }
     // Bound the dedupe set so it doesn't grow forever during long sessions.
@@ -496,7 +511,7 @@ export class PixiRenderer {
     // Size by LONG edge so the longest dimension matches
     // PROJECTILE_LONG_EDGE_PX regardless of the source's aspect ratio.
     // Scales with per-level visualScale to track unit size on sparse maps.
-    const targetLE = PROJECTILE_LONG_EDGE_PX * world.visualScale;
+    const baseLE = PROJECTILE_LONG_EDGE_PX * world.visualScale;
     for (let i = this.beams.length - 1; i >= 0; i--) {
       const b = this.beams[i]!;
       const age = nowMs - b.birthMs;
@@ -523,6 +538,7 @@ export class PixiRenderer {
           (b as { _serial?: number })._serial = serial;
           const sprite = new Sprite(b.projectile);
           sprite.anchor.set(0.5);
+          const targetLE = baseLE * (b.projectileId ? PROJECTILE_SIZE_SCALE[b.projectileId] : 1);
           const tw = b.projectile.width;
           const th = b.projectile.height;
           if (tw >= th) {

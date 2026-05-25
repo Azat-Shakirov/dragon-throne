@@ -41,13 +41,13 @@ export function PauseMenu({ onResume, onRestart }: PauseMenuProps) {
         </div>
 
         <div style={buttonStackStyle}>
-          <button style={compactButtonStyle} onClick={() => { playSfx('click'); onResume(); }}>
+          <button className="dt-btn" style={compactButtonStyle} onClick={() => { playSfx('click'); onResume(); }}>
             Resume
           </button>
-          <button style={compactButtonStyle} onClick={() => { playSfx('click'); onRestart(); }}>
+          <button className="dt-btn" style={compactButtonStyle} onClick={() => { playSfx('click'); onRestart(); }}>
             Restart level
           </button>
-          <button style={compactButtonStyle} onClick={() => { playSfx('click'); exitToMenu(); }}>
+          <button className="dt-btn" style={compactButtonStyle} onClick={() => { playSfx('click'); exitToMenu(); }}>
             Main menu
           </button>
         </div>
