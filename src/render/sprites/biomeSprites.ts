@@ -24,6 +24,13 @@ const SPRITE_URLS: Partial<Record<BiomeId, string>> = {
   jungle: jungleBgUrl,
 };
 
+// v2.11.1: the raw floor-image URLs, reused by the dev level editor to paint
+// the chosen biome onto its 2D preview canvas (the editor isn't a PixiJS
+// surface, so it can't use the Texture map above). `stone` is intentionally
+// absent — it has no floor image and falls back to the dark canvas, same as
+// in-game.
+export const BIOME_FLOOR_URLS: Partial<Record<BiomeId, string>> = SPRITE_URLS;
+
 const textures = new Map<BiomeId, Texture>();
 let loaded = false;
 

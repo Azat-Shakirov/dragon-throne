@@ -37,6 +37,18 @@
         font-family: 'IM Fell English', Georgia, 'Times New Roman', serif;
         color: #eee;
       }
+      /* v2.11.1: hide scrollbars on panes that may overflow (e.g. the
+         Battle Royale map grid / setup pane) while keeping them scrollable.
+         Avoids the chunky default scrollbar clashing with the castle UI. */
+      .dt-noscroll {
+        scrollbar-width: none;       /* Firefox */
+        -ms-overflow-style: none;    /* old Edge/IE */
+      }
+      .dt-noscroll::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+        display: none;               /* Chromium/WebKit */
+      }
       /* v2.10.0: hover/active feedback for the wood-plaque menu buttons
          (.dt-btn) and level tiles (.dt-level-btn). Lives here as CSS
          classes because the buttons use inline styles, and :hover can't

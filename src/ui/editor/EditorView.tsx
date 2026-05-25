@@ -12,12 +12,18 @@ import { loadContent } from '../../engine/content/ContentLoader';
 import { LevelSchema } from '../../engine/content/schemas';
 import type {
   ArchetypeId,
+  BiomeId,
   ContentLibrary,
   LevelDef,
   LevelNodeDef,
   LevelPlayerDef,
 } from '../../engine/content/ContentLibrary';
 import type { FactionId, NodeTypeId } from '../../types';
+import { BIOME_FLOOR_URLS } from '../../render/sprites/biomeSprites';
+
+// v2.11.1: biome (terrain) options for the editor's map dropdown. Order
+// matches the LevelSchema enum; `stone` has no floor image (dark canvas).
+const BIOME_IDS: BiomeId[] = ['grass', 'desert', 'snow', 'jungle', 'stone'];
 
 // v2.11.0: deterministic unit-type (archetype) order for the per-player
 // editor dropdown. Multiple players may share the same faction AND/OR the
@@ -52,7 +58,7 @@ function newLevel(id: number): LevelDef {
     tutorialKey: null,
     introducesNodeTypes: [],
     introducesFactions: [],
-    map: { width: CANVAS_W, height: CANVAS_H, background: 'stone' },
+    map: { width: CANVAS_W, height: CANVAS_H, background: 'grass' },
     terrain: { walls: [] },
     players: [
       { id: 'p1',  type: 'human', color: '#3da9fc', faction: 'azure' as FactionId, archetype: 'infantry' },
@@ -134,14 +140,34 @@ export function EditorView() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
 
+  // v2.11.1: load the chosen biome's floor image so the editor canvas paints
+  // the actual terrain instead of a flat black background. `stone` has no
+  // image and keeps the dark canvas (matching in-game).
+  const biomeUrl = BIOME_FLOOR_URLS[level.map.background];
+  const [biomeImg, setBiomeImg] = useState<HTMLImageElement | null>(null);
+  useEffect(() => {
+    if (!biomeUrl) { setBiomeImg(null); return; }
+    const img = new Image();
+    let cancelled = false;
+    img.onload = () => { if (!cancelled) setBiomeImg(img); };
+    img.src = biomeUrl;
+    return () => { cancelled = true; };
+  }, [biomeUrl]);
+
   useEffect(() => {
     const c = canvasRef.current;
     if (!c) return;
     const ctx = c.getContext('2d');
     if (!ctx) return;
-    // Background.
+    // Background — dark base, then the biome floor (if any) painted over it
+    // at the same 0.92 alpha PixiRenderer uses in-game.
     ctx.fillStyle = '#15171c';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    if (biomeImg) {
+      ctx.globalAlpha = 0.92;
+      ctx.drawImage(biomeImg, 0, 0, CANVAS_W, CANVAS_H);
+      ctx.globalAlpha = 1;
+    }
     // Grid.
     ctx.strokeStyle = 'rgba(255,255,255,0.04)';
     ctx.lineWidth = 1;
@@ -237,7 +263,7 @@ export function EditorView() {
       ctx.fill();
       ctx.globalAlpha = 1;
     }
-  }, [level, selection, tool, hover, addWallFirstPoint, addNodeOwner]);
+  }, [level, selection, tool, hover, addWallFirstPoint, addNodeOwner, biomeImg]);
 
   // Hit testing.
   function hitNode(x: number, y: number): LevelNodeDef | null {
@@ -521,6 +547,18 @@ export function EditorView() {
           onChange={(e) => setLevel({ ...level, id: Number(e.target.value) })}
           style={{ ...selectStyle, width: 80 }}
         />
+        {/* v2.11.1: map terrain (biome). Drives the floor texture both here
+            (editor preview) and in-game. `stone` = dark canvas. */}
+        <label style={checkboxLabelStyle} title="Map terrain / biome">
+          terrain
+          <select
+            value={level.map.background}
+            onChange={(e) => setLevel({ ...level, map: { ...level.map, background: e.target.value as BiomeId } })}
+            style={selectStyle}
+          >
+            {BIOME_IDS.map((b) => <option key={b} value={b}>{b}</option>)}
+          </select>
+        </label>
         {/* v2.11.0: flag this level as a Battle Royale skirmish map. BR maps
             appear in the Battle Royale grid and are hidden from Campaign. */}
         <label style={checkboxLabelStyle} title="Show this map in Battle Royale (hidden from Campaign)">

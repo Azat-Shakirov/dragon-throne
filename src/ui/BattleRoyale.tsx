@@ -83,7 +83,7 @@ export function BattleRoyale() {
           {/* ── Left: map picker grid ─────────────────────────────── */}
           <div style={leftPaneStyle}>
             <div style={paneHeadingStyle}>Maps</div>
-            <div style={mapGridStyle}>
+            <div className="dt-noscroll" style={mapGridStyle}>
               {brMaps.map((id, idx) => {
                 const selected = id === selectedId;
                 return (
@@ -108,7 +108,7 @@ export function BattleRoyale() {
           </div>
 
           {/* ── Right: preview + setup ────────────────────────────── */}
-          <div style={rightPaneStyle}>
+          <div className="dt-noscroll" style={rightPaneStyle}>
             <MapPreview level={selectedLevel} />
             <div style={mapInfoStyle}>
               <div style={mapNameStyle}>{selectedLevel?.name ?? '—'}</div>
@@ -208,7 +208,12 @@ function MapPreview({ level }: { level: LevelDef | null }) {
 
     const mw = level.map.width;
     const mh = level.map.height;
-    const scale = Math.min(PREVIEW_W / mw, PREVIEW_H / mh);
+    // Inset the drawing by a margin so the whole map — including node dots
+    // that sit right at the edges — is fully visible with breathing room
+    // (the map is "zoomed out" inside the frame rather than filling it edge
+    // to edge and clipping border nodes).
+    const PAD = 24;
+    const scale = Math.min((PREVIEW_W - PAD * 2) / mw, (PREVIEW_H - PAD * 2) / mh);
     const offX = (PREVIEW_W - mw * scale) / 2;
     const offY = (PREVIEW_H - mh * scale) / 2;
     const tx = (x: number) => offX + x * scale;
@@ -234,7 +239,7 @@ function MapPreview({ level }: { level: LevelDef | null }) {
     for (const n of level.nodes) {
       const owner = n.ownerId ? level.players.find((p) => p.id === n.ownerId) : null;
       const color = owner?.color ?? '#8b8f99';
-      const r = 6 + n.level * 2;
+      const r = 5 + n.level * 1.5;
       ctx.beginPath();
       ctx.arc(tx(n.position[0]), ty(n.position[1]), r, 0, Math.PI * 2);
       ctx.fillStyle = color;

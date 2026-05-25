@@ -53,6 +53,12 @@ interface CaptureFlashState {
   particles: CaptureParticle[];
 }
 
+// Node levels are 1–5; map to Roman numerals for the level indicator.
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
+function toRoman(level: number): string {
+  return ROMAN[level] ?? String(level);
+}
+
 function drawShape(g: Graphics, kind: ShapeKind, size: number, cornerRadius: number): void {
   const half = size / 2;
   switch (kind) {
@@ -80,7 +86,7 @@ export class NodeView {
   private readonly liquidMask: Graphics;
   private readonly towerSprite: Sprite;
   private readonly effectsLayer: Graphics;
-  private readonly pips: Graphics;
+  private readonly levelLabel: Text;
   private readonly unitsLabel: Text;
   private readonly nodeId: string;
   private currentSize = 0;
@@ -118,7 +124,23 @@ export class NodeView {
     // below, the spire/flag above.
     this.towerSprite.visible = false;
     this.effectsLayer = new Graphics();
-    this.pips = new Graphics();
+    // v2.11.1: level indicator is a Roman numeral (I–V) instead of a row of
+    // pips — counting dots was ambiguous past L2. Sans-serif for tiny-size
+    // legibility (per the in-canvas-text carve-out); dark stroke so it reads
+    // on bright biome floors. Fill is recolored per-frame to the owner color.
+    this.levelLabel = new Text({
+      text: 'I',
+      style: {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: 13,
+        fill: 0xffffff,
+        stroke: { color: 0x000000, width: 3, alpha: 0.85 },
+        fontWeight: '700',
+        align: 'center',
+        letterSpacing: 1,
+      },
+    });
+    this.levelLabel.anchor.set(0.5, 1);
 
     this.liquidLayer.addChild(this.liquid);
     this.liquidLayer.addChild(this.liquidMask);
@@ -144,7 +166,7 @@ export class NodeView {
     this.container.addChild(this.liquidLayer);
     this.container.addChild(this.towerSprite);
     this.container.addChild(this.effectsLayer);
-    this.container.addChild(this.pips);
+    this.container.addChild(this.levelLabel);
     this.container.addChild(this.unitsLabel);
   }
 
@@ -310,23 +332,13 @@ export class NodeView {
         .fill({ color: liquidColor, alpha: 0.92 });
     }
 
-    // Level pips along top edge. For sprites, sit above the sprite's actual
-    // bounding box (the tower's spire top), not the small `half`.
-    this.pips.clear();
-    const pipY = useSprite ? -visualHalfY - 6 : -half - 7;
-    if (node.level > 1) {
-      const pipRadius = 2.2;
-      const spacing = 8;
-      const totalW = (node.level - 1) * spacing;
-      const startX = -totalW / 2;
-      for (let i = 0; i < node.level; i++) {
-        this.pips
-          .circle(startX + i * spacing, pipY, pipRadius)
-          .fill({ color: ownerColor, alpha: 0.95 });
-      }
-    } else {
-      this.pips.circle(0, pipY, 2.2).fill({ color: ownerColor, alpha: 0.95 });
-    }
+    // Level indicator — Roman numeral above the node's top edge. For sprites
+    // it sits above the sprite's actual bounding box (the tower's spire top),
+    // not the small `half`.
+    const labelY = useSprite ? -visualHalfY - 4 : -half - 5;
+    this.levelLabel.text = toRoman(node.level);
+    this.levelLabel.style.fill = ownerColor;
+    this.levelLabel.position.set(0, labelY);
 
     // Units number — floor(units) per §4.2. For sprite towers we drop the
     // label below the tower (the building body covers the center anchor).

@@ -28,6 +28,7 @@ import type { World } from '../engine/World';
 import type { Vec2 } from '../types';
 import type { ContentLibrary } from '../engine/content/ContentLibrary';
 import type { TowerShot } from '../engine/systems/TowerInterceptSystem';
+import type { SpellCastEvent } from '../engine/GameEngine';
 import { pathCacheKey } from '../engine/PathSystem';
 import { NodeView } from './views/NodeView';
 import { UnitGroupView } from './views/UnitGroupView';
@@ -85,13 +86,15 @@ interface ActiveSpellOverlay {
   worldY: number;
   birthMs: number;
   sprite: Sprite;
-  // v2.9.4: persistent overlays (freeze) stay shown at fixed size +
-  // alpha while the target is in the spell's effect state, and tear
-  // down when the engine reverts that state (e.g. another player
-  // captures the frozen node). One-shot overlays (everything else)
-  // ignore targetNodeId and animate in/hold/out over SPELL_OVERLAY_LIFE_MS.
+  // v2.9.4: persistent overlays (freeze, and v2.11.1 starve) stay shown at
+  // fixed size + alpha while the target is in the spell's effect state, and
+  // tear down when the engine reverts that state (freeze → node recaptured;
+  // starve → stacks cleared). One-shot overlays animate in/hold/out over
+  // `lifeMs` (defaults to SPELL_OVERLAY_LIFE_MS; sabotage uses a 5 s hold).
   persistent: boolean;
   targetNodeId?: string;
+  // v2.11.1: lifetime for one-shot overlays. Undefined for persistent ones.
+  lifeMs?: number;
 }
 
 const RIPPLE_LIFE_MS = 600;
@@ -125,6 +128,10 @@ const PROJECTILE_SIZE_SCALE: Record<ProjectileId, number> = {
 };
 const SPELL_OVERLAY_LIFE_MS = 1100;
 const SPELL_OVERLAY_BASE_SIZE_PX = 120;
+// v2.11.1: the sabotage ring lingers on the captured node for 5 s, then
+// fades out — long enough to read "this was sabotaged" without sticking
+// around permanently (sabotage leaves no lasting node state to track).
+const SABOTAGE_OVERLAY_LIFE_MS = 5000;
 
 export class PixiRenderer {
   readonly app: Application;
@@ -291,6 +298,7 @@ export class PixiRenderer {
     alpha: number,
     nowMs: number,
     recentTowerShots: ReadonlyArray<TowerShot> = [],
+    recentSpellCasts: SpellCastEvent[] = [],
   ): void {
     this.fitWorldToHost(world);
     this.syncBiome(world);
@@ -303,6 +311,8 @@ export class PixiRenderer {
     this.drawTowerBeams(nowMs, world);
     this.drawDeathPuffs(nowMs);
     this.observeFreezeTransitions(world, nowMs);
+    this.observeStarveOverlays(world, nowMs);
+    this.ingestSpellCasts(recentSpellCasts, world, nowMs);
     this.drawSpellOverlays(nowMs, world);
     this.selectionBoxView.update(session.boxSelect);
     this.drawRipples(nowMs);
@@ -743,7 +753,10 @@ export class PixiRenderer {
     const tex = getSpellTexture(spellId as 'freeze' | 'starve' | 'sabotage');
     if (!tex) return;
 
-    const persistent = spellId === 'freeze';
+    // Persistent overlays sit on the node while its spell-effect state holds:
+    // freeze (node neutralized) and starve (active starve stacks). Sabotage
+    // and any future one-shot spell animate over a fixed lifetime instead.
+    const persistent = spellId === 'freeze' || spellId === 'starve';
 
     // Persistent: dedupe by target — if a freeze overlay already
     // exists for this node (shouldn't normally happen, since the
@@ -780,6 +793,7 @@ export class PixiRenderer {
       sprite,
       persistent,
       targetNodeId,
+      lifeMs: persistent ? undefined : spellId === 'sabotage' ? SABOTAGE_OVERLAY_LIFE_MS : SPELL_OVERLAY_LIFE_MS,
     });
   }
 
@@ -814,6 +828,41 @@ export class PixiRenderer {
     }
   }
 
+  // v2.11.1: ensure a persistent starve overlay exists for every node with
+  // active starve stacks. State-driven (not edge-detected), so it covers
+  // BOTH human and AI casts; the spawnSpellOverlay dedup keeps the human
+  // cast (which also fires via the InputController) from double-spawning.
+  // Teardown when stacks clear is handled in drawSpellOverlays.
+  private observeStarveOverlays(world: World, nowMs: number): void {
+    for (const id of world.nodeOrder) {
+      const node = world.nodes.get(id);
+      if (!node || node.starveStacks.length === 0) continue;
+      const exists = this.activeSpellOverlays.some(
+        (o) => o.persistent && o.spellId === 'starve' && o.targetNodeId === id,
+      );
+      if (!exists) {
+        this.spawnSpellOverlay('starve', id, node.position.x, node.position.y, nowMs);
+      }
+    }
+  }
+
+  // v2.11.1: spawn one-shot overlays for spells the engine resolved since the
+  // last frame (drains the buffer). Human casts are skipped — they already
+  // spawned via the InputController callback. Today only sabotage needs this
+  // (freeze + starve are caught by their state observers above); freeze/starve
+  // entries are ignored here to avoid a duplicate one-shot.
+  private ingestSpellCasts(events: SpellCastEvent[], world: World, nowMs: number): void {
+    for (const ev of events) {
+      if (ev.byHuman) continue;
+      if (ev.spellId !== 'sabotage') continue;
+      const node = world.nodes.get(ev.targetNodeId);
+      if (!node) continue;
+      this.spawnSpellOverlay(ev.spellId, ev.targetNodeId, node.position.x, node.position.y, nowMs);
+    }
+    // Drain — consumed exactly once.
+    events.length = 0;
+  }
+
   // v2.9.4: drawSpellOverlays takes the world so it can tear down
   // persistent overlays once the engine state that triggered them
   // has reverted (e.g. someone captures a frozen node).
@@ -822,42 +871,61 @@ export class PixiRenderer {
       const o = this.activeSpellOverlays[i]!;
 
       if (o.persistent) {
-        // Freeze overlay stays until the targeted node is recaptured.
-        // Engine signal: freeze sets ownerId = null + faction = 'neutral';
-        // any capture (combat or sabotage) sets ownerId back to a player.
+        // Persistent overlays stay until the engine state that triggered
+        // them reverts. Teardown signal differs per spell:
+        //   freeze  — node recaptured (ownerId goes non-null again).
+        //   starve  — all starve stacks cleared (drained out / captured).
         const node = o.targetNodeId ? world.nodes.get(o.targetNodeId) : null;
-        const stillFrozen = !!node && node.ownerId === null;
-        if (!stillFrozen) {
+        const stillActive = !!node && (
+          o.spellId === 'starve'
+            ? node.starveStacks.length > 0
+            : node.ownerId === null // freeze
+        );
+        if (!stillActive) {
           this.beamLayer.removeChild(o.sprite);
           o.sprite.destroy();
           this.activeSpellOverlays.splice(i, 1);
           continue;
         }
-        // Keep sprite glued to the node — if a future feature lets
-        // nodes move, the overlay tracks them. Today nodes are
-        // static so this is a no-op refresh.
-        if (node) {
-          o.sprite.position.set(node.position.x, node.position.y);
+        // Keep sprite glued to the node — if a future feature lets nodes
+        // move, the overlay tracks them. Today nodes are static.
+        o.sprite.position.set(node.position.x, node.position.y);
+        // Starve breathes gently so the wreath reads as "alive/draining";
+        // freeze just sits.
+        if (o.spellId === 'starve') {
+          o.sprite.alpha = 0.78 + 0.12 * Math.sin(nowMs * 0.004);
         }
-        // No alpha or scale animation — the ring just sits there.
         continue;
       }
 
-      // One-shot animated overlay (starve / sabotage / future spells).
+      // One-shot animated overlay (sabotage / future spells).
+      const life = o.lifeMs ?? SPELL_OVERLAY_LIFE_MS;
       const age = nowMs - o.birthMs;
-      if (age > SPELL_OVERLAY_LIFE_MS) {
+      if (age > life) {
         this.beamLayer.removeChild(o.sprite);
         o.sprite.destroy();
         this.activeSpellOverlays.splice(i, 1);
         continue;
       }
-      const t = age / SPELL_OVERLAY_LIFE_MS;
-      // Scale up + ease in (first 30%), hold (next 40%), fade out (last 30%).
-      let alpha = 0;
-      if (t < 0.3) alpha = t / 0.3;
-      else if (t < 0.7) alpha = 1;
-      else alpha = 1 - (t - 0.7) / 0.3;
-      const scale = 0.6 + t * 0.7;
+      const t = age / life;
+      let alpha: number;
+      let scale: number;
+      if (o.spellId === 'sabotage') {
+        // Snap in, sit at full opacity for most of the 5 s hold, then fade
+        // out over the last ~15% — the ring "stays, then disappears".
+        const fadeIn = 0.06;
+        const fadeOut = 0.85;
+        if (t < fadeIn) alpha = t / fadeIn;
+        else if (t < fadeOut) alpha = 1;
+        else alpha = 1 - (t - fadeOut) / (1 - fadeOut);
+        scale = 0.98 + 0.05 * t; // barely-perceptible drift, no burst
+      } else {
+        // Legacy burst: scale up + ease in (30%), hold (40%), fade out (30%).
+        if (t < 0.3) alpha = t / 0.3;
+        else if (t < 0.7) alpha = 1;
+        else alpha = 1 - (t - 0.7) / 0.3;
+        scale = 0.6 + t * 0.7;
+      }
       o.sprite.alpha = alpha;
       o.sprite.scale.set(scale);
     }

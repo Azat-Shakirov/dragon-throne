@@ -34,6 +34,17 @@ export type SpellResult =
   | { ok: true }
   | { ok: false; reason: string };
 
+// v2.11.1: render-facing record of a spell that just resolved. The renderer
+// reads + drains these to spawn AI-cast spell overlays (human casts spawn
+// directly via the InputController callback). `byHuman` lets the renderer
+// skip the human's own casts so they aren't double-spawned. Engine logic
+// never reads this — it's a one-way event channel, like TowerShot.
+export interface SpellCastEvent {
+  spellId: string;
+  targetNodeId: NodeId;
+  byHuman: boolean;
+}
+
 const BASE_UNIT_SPEED_PX_PER_MS = 0.09; // ~90px/sec — v2.7.3 pacing slow-down (was 0.12).
 
 export class GameEngine {
@@ -42,6 +53,9 @@ export class GameEngine {
   readonly content: ContentLibrary;
   readonly ais: AIController[];
   readonly towerInterceptSystem: TowerInterceptSystem;
+  // v2.11.1: spell casts that resolved since the renderer last drained this.
+  // Capped so a headless run (no renderer) can't grow it without bound.
+  readonly recentSpellCasts: SpellCastEvent[] = [];
 
   constructor(level: LevelDef, content: ContentLibrary, seed = 1) {
     registerCoreEffects();
@@ -316,6 +330,16 @@ export class GameEngine {
     // Pay cost from the Lab.
     lab.units -= spell.unitCost;
     lab.spellQueue = null;
+
+    // Record for the renderer (overlay spawn). byHuman lets the renderer
+    // skip the human's own cast (already spawned via the InputController).
+    this.recentSpellCasts.push({
+      spellId: spell.id,
+      targetNodeId,
+      byHuman: lab.ownerId === this.world.humanPlayerId,
+    });
+    if (this.recentSpellCasts.length > 32) this.recentSpellCasts.shift();
+
     return { ok: true };
   }
 

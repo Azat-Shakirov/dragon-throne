@@ -243,6 +243,7 @@ export function GameView({ levelId }: GameViewProps) {
           alpha,
           now,
           engine.towerInterceptSystem.recentShots,
+          engine.recentSpellCasts,
         );
         rafId = requestAnimationFrame(frame);
       };
