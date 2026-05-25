@@ -273,16 +273,14 @@ export function GameView({ levelId }: GameViewProps) {
       {engineRefForMenu.current && <HudTimer engineRef={engineRefForMenu} />}
       {/* v2.7.6: shift the canvas below the UnitBar (24px) so nodes
          placed near y=0 in a level aren't hidden under the bar. */}
-      <div
-        ref={hostRef}
-        style={{
-          width: '100vw',
-          height: 'calc(100vh - 24px)',
-          marginTop: 24,
-          position: 'relative',
-          cursor: 'crosshair',
-        }}
-      />
+      {/* v2.11.2: `.game-host` sizes the canvas to dvh (dynamic viewport
+          height) so it fills the ACTUALLY-visible area on mobile — `100vh`
+          includes the region behind the browser's address/nav chrome, which
+          pushed the map's bottom (and, with the fixed UnitBar, its top) out
+          of view. The class layers `100vh` then `100dvh` so engines without
+          dvh still get a working fallback. fitWorldToHost already contain-
+          fits the map, so a correctly-sized host keeps the whole map on-screen. */}
+      <div ref={hostRef} className="game-host" />
       {tutorial && (
         <TutorialOverlay
           tutorial={tutorial}

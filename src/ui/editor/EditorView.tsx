@@ -21,9 +21,11 @@ import type {
 import type { FactionId, NodeTypeId } from '../../types';
 import { BIOME_FLOOR_URLS } from '../../render/sprites/biomeSprites';
 
-// v2.11.1: biome (terrain) options for the editor's map dropdown. Order
-// matches the LevelSchema enum; `stone` has no floor image (dark canvas).
-const BIOME_IDS: BiomeId[] = ['grass', 'desert', 'snow', 'jungle', 'stone'];
+// v2.11.2: biome (terrain) options for the editor's map dropdown. `stone`
+// is intentionally excluded — it has no floor art (renders as the dark
+// canvas), so it isn't a real selectable terrain. The schema still permits
+// it for the ~40 legacy stone levels; we just don't offer it for authoring.
+const BIOME_IDS: BiomeId[] = ['grass', 'desert', 'snow', 'jungle'];
 
 // v2.11.0: deterministic unit-type (archetype) order for the per-player
 // editor dropdown. Multiple players may share the same faction AND/OR the

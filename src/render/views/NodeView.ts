@@ -132,10 +132,13 @@ export class NodeView {
       text: 'I',
       style: {
         fontFamily: 'system-ui, sans-serif',
-        fontSize: 13,
-        fill: 0xffffff,
-        stroke: { color: 0x000000, width: 3, alpha: 0.85 },
-        fontWeight: '700',
+        // v2.11.2: bigger + a constant bright gold fill (was the owner color,
+        // which vanished for dark factions like shadow) with a heavy dark
+        // outline so the numeral pops above the node on any biome/banner.
+        fontSize: 18,
+        fill: 0xffe39a,
+        stroke: { color: 0x000000, width: 4, alpha: 1 },
+        fontWeight: '800',
         align: 'center',
         letterSpacing: 1,
       },
@@ -337,7 +340,6 @@ export class NodeView {
     // not the small `half`.
     const labelY = useSprite ? -visualHalfY - 4 : -half - 5;
     this.levelLabel.text = toRoman(node.level);
-    this.levelLabel.style.fill = ownerColor;
     this.levelLabel.position.set(0, labelY);
 
     // Units number — floor(units) per §4.2. For sprite towers we drop the

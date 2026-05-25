@@ -93,7 +93,7 @@
       "ownerId": "p1",
       "nodeType": "house",
       "level": 1,
-      "units": 12,
+      "units": 10,
       "faction": "azure"
     },
     {
@@ -117,7 +117,7 @@
       "ownerId": "ai1",
       "nodeType": "house",
       "level": 1,
-      "units": 12,
+      "units": 10,
       "faction": "crimson"
     },
     {

@@ -132,6 +132,9 @@ const SPELL_OVERLAY_BASE_SIZE_PX = 120;
 // fades out — long enough to read "this was sabotaged" without sticking
 // around permanently (sabotage leaves no lasting node state to track).
 const SABOTAGE_OVERLAY_LIFE_MS = 5000;
+// v2.11.2: the sabotage wreath read too large at the shared 120 px — sized
+// down so it hugs the node rather than sprawling over its neighbours.
+const SABOTAGE_OVERLAY_SIZE_PX = 84;
 
 export class PixiRenderer {
   readonly app: Application;
@@ -776,7 +779,7 @@ export class PixiRenderer {
 
     const sprite = new Sprite(tex);
     sprite.anchor.set(0.5);
-    const targetH = SPELL_OVERLAY_BASE_SIZE_PX;
+    const targetH = spellId === 'sabotage' ? SABOTAGE_OVERLAY_SIZE_PX : SPELL_OVERLAY_BASE_SIZE_PX;
     const ratio = tex.width / tex.height;
     sprite.height = targetH;
     sprite.width = targetH * ratio;

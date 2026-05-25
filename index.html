@@ -49,6 +49,18 @@
         height: 0;
         display: none;               /* Chromium/WebKit */
       }
+      /* v2.11.2: in-game canvas host. dvh keeps the map inside the visible
+         viewport on mobile (100vh sits behind the browser chrome, cropping
+         the map top/bottom). The 100vh line is the fallback for engines
+         without dvh; the 100dvh line overrides where supported. */
+      .game-host {
+        width: 100vw;
+        height: calc(100vh - 24px);
+        height: calc(100dvh - 24px);
+        margin-top: 24px;
+        position: relative;
+        cursor: crosshair;
+      }
       /* v2.10.0: hover/active feedback for the wood-plaque menu buttons
          (.dt-btn) and level tiles (.dt-level-btn). Lives here as CSS
          classes because the buttons use inline styles, and :hover can't

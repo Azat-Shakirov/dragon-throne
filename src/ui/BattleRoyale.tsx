@@ -211,8 +211,9 @@ function MapPreview({ level }: { level: LevelDef | null }) {
     // Inset the drawing by a margin so the whole map — including node dots
     // that sit right at the edges — is fully visible with breathing room
     // (the map is "zoomed out" inside the frame rather than filling it edge
-    // to edge and clipping border nodes).
-    const PAD = 24;
+    // to edge and clipping border nodes). v2.11.2: bumped 24 → 38 after the
+    // bottom row of nodes still read as clipped at 24.
+    const PAD = 38;
     const scale = Math.min((PREVIEW_W - PAD * 2) / mw, (PREVIEW_H - PAD * 2) / mh);
     const offX = (PREVIEW_W - mw * scale) / 2;
     const offY = (PREVIEW_H - mh * scale) / 2;
