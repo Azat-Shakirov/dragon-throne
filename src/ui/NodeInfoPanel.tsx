@@ -29,7 +29,7 @@ import {
   SpellIcon,
 } from './infoIcons';
 // v2.9.7: in-game action buttons inherit the castle wood-plaque theme.
-import { miniButtonStyle } from './menuStyles';
+import { miniButtonStyle, THEME_FONT } from './menuStyles';
 
 interface Props {
   engine: GameEngine;
@@ -408,7 +408,7 @@ const panelStyle: React.CSSProperties = {
   border: '1px solid rgba(255,255,255,0.15)',
   borderRadius: 6,
   padding: 10,
-  fontFamily: 'system-ui, sans-serif',
+  fontFamily: THEME_FONT,
   fontSize: 12,
   color: '#e8e8e8',
   zIndex: 8,

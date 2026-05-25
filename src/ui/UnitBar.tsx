@@ -2,6 +2,7 @@
 // Subscribes to the HUD store, animates width changes via CSS transition.
 
 import { useHudStore } from '../store/hudStore';
+import { THEME_FONT } from './menuStyles';
 
 const BAR_HEIGHT = 24;
 const TRANSITION_MS = 200;
@@ -34,7 +35,7 @@ export function UnitBar() {
               alignItems: 'center',
               justifyContent: 'center',
               color: '#fff',
-              fontFamily: 'system-ui, -apple-system, sans-serif',
+              fontFamily: THEME_FONT,
               fontSize: 13,
               fontWeight: 700,
               textShadow: '0 1px 1px rgba(0,0,0,0.45)',

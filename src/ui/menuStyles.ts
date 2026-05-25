@@ -20,6 +20,15 @@ import buttonWoodUrl from '../render/sprites/ui/button-wood.png';
 import levelButtonUrl from '../render/sprites/ui/level-button.png';
 import menuBackgroundUrl from '../render/sprites/ui/menu-background.png';
 
+// v2.10.1: game-wide theme font (IM Fell English, an antique printing-press
+// serif). Declared as @font-face in index.html and set on <body> so the DOM
+// inherits it; this constant mirrors that stack for the inline-styled
+// components that hardcode a fontFamily. Falls back to a serif while the
+// woff2 loads / if it's unavailable. In-canvas PixiJS number labels and the
+// DEV-only sandboxes keep a clean sans (serif numerals read poorly tiny, and
+// WebGL text needs separate font-loading plumbing).
+export const THEME_FONT = "'IM Fell English', Georgia, 'Times New Roman', serif";
+
 // v2.9.8: layered backgrounds — the dark radial gradient sits ON TOP
 // of the painterly menu image as a darkening veil so the white title
 // + warm wood buttons stay legible. Background-size 'cover' so the
@@ -40,19 +49,24 @@ export const screenStyle: CSSProperties = {
   backgroundPosition: 'center, center',
   backgroundRepeat: 'no-repeat, no-repeat',
   color: '#eee',
-  fontFamily: 'system-ui, -apple-system, sans-serif',
+  fontFamily: THEME_FONT,
   zIndex: 100,
 };
 
 export const titleStyle: CSSProperties = {
-  fontSize: 48,
+  fontSize: 52,
   fontWeight: 800,
   marginBottom: 12,
-  letterSpacing: '0.02em',
-  background: 'linear-gradient(180deg, #ffffff 0%, #6dd0ff 100%)',
+  letterSpacing: '0.03em',
+  fontFamily: THEME_FONT,
+  // v2.10.1: warm gold gradient (was a cool white→azure gradient that read
+  // as off-theme against the castle aesthetic). Gold-on-parchment matches
+  // the wood-and-banner UI.
+  background: 'linear-gradient(180deg, #ffe9b0 0%, #c9912f 100%)',
   WebkitBackgroundClip: 'text',
   WebkitTextFillColor: 'transparent',
   backgroundClip: 'text',
+  textShadow: '0 2px 6px rgba(0,0,0,0.45)',
 };
 
 export const subtitleStyle: CSSProperties = {
@@ -169,7 +183,10 @@ export const miniButtonStyle: CSSProperties = {
 // lands roughly 120–180 px square — same ballpark as the old 128, so
 // the text proportions still read. maxWidth caps it on ultra-wide
 // monitors so a row of 10 doesn't balloon into oversized plaques.
-const LEVEL_BUTTON_MAX_SIZE = 150;
+// v2.10.1: shrunk from 150 → 104 so the 10-wide grid reads as compact
+// tiles with breathing room between them rather than big plaques filling
+// every cell. Tile fonts dropped to match (see LevelSelect inline sizes).
+const LEVEL_BUTTON_MAX_SIZE = 104;
 // v2.9.8: symmetric padding. The level-button.png wood plaque IS
 // geometrically centered (verified via Pillow column-scan of the
 // 446×512 source: inner-wood vertical bounds ~y=221–353 → center
@@ -177,8 +194,8 @@ const LEVEL_BUTTON_MAX_SIZE = 150;
 // corner-stud weighting). With `justify-content: center` the
 // number+name+stars stack sits on the wood midline at all tile
 // sizes without an asymmetric kludge.
-const LEVEL_BUTTON_PADDING_V = 16;
-const LEVEL_BUTTON_PADDING_X = 14;
+const LEVEL_BUTTON_PADDING_V = 12;
+const LEVEL_BUTTON_PADDING_X = 10;
 
 export const levelButtonStyle: CSSProperties = {
   width: '100%',
@@ -207,7 +224,7 @@ export const levelButtonStyle: CSSProperties = {
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  gap: 3,
+  gap: 2,
   // Grid cell may be wider than the button — center inside the cell
   // instead of stretching.
   justifySelf: 'center',
@@ -276,10 +293,11 @@ export const chipStyle: CSSProperties = {
 
 export const chipSelectedStyle: CSSProperties = {
   ...chipStyle,
-  // Azure glow + brighter label to signal selection on top of the
-  // wood plaque (the underlying texture can't itself change).
+  // Brighter label to signal selection on top of the wood plaque. The
+  // azure glow itself moved to the `.dt-chip-selected` CSS class (v2.10.1)
+  // so the `.dt-chip:hover` brightness can layer on top of it — an inline
+  // `filter` here would shadow the hover rule (inline beats stylesheet).
   color: '#bfe6ff',
-  filter: 'drop-shadow(0 0 6px rgba(61, 169, 252, 0.85))',
 };
 
 export const cardStyle: CSSProperties = {

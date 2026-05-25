@@ -120,7 +120,8 @@ const PROJECTILE_LONG_EDGE_PX = 30;
 const PROJECTILE_SIZE_SCALE: Record<ProjectileId, number> = {
   arrow: 1,
   'ballista-bolt': 1,
-  cannonball: 0.55,
+  // v2.10.1: 0.55 → 0.45, the cannonball still read a touch heavy.
+  cannonball: 0.45,
 };
 const SPELL_OVERLAY_LIFE_MS = 1100;
 const SPELL_OVERLAY_BASE_SIZE_PX = 120;

@@ -65,6 +65,7 @@ export function LevelSelect() {
             return (
               <button
                 key={aid}
+                className={selected ? 'dt-chip dt-chip-selected' : 'dt-chip'}
                 onClick={() => {
                   playSfx('click');
                   setPlayerStartArchetype(selected ? null : aid);
@@ -80,6 +81,7 @@ export function LevelSelect() {
             );
           })}
           <button
+            className="dt-chip"
             onClick={() => { playSfx('click'); setPlayerStartArchetype(null); }}
             style={{
               ...chipStyle,
@@ -120,20 +122,20 @@ export function LevelSelect() {
                 cursor: unlocked ? 'pointer' : 'not-allowed',
               }}
             >
-              <span style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{id}</span>
+              <span style={{ fontSize: 15, fontWeight: 800, lineHeight: 1 }}>{id}</span>
               <span style={{
-                fontSize: 10,
+                fontSize: 8,
                 color: '#f3e8d0',
                 textAlign: 'center',
-                lineHeight: 1.1,
+                lineHeight: 1.05,
                 wordBreak: 'break-word',
                 hyphens: 'auto',
                 maxWidth: '100%',
               }}>{lv.name}</span>
-              <span style={{ fontSize: 12, color: '#f5c95b', letterSpacing: '0.08em', lineHeight: 1 }}>
+              <span style={{ fontSize: 9, color: '#f5c95b', letterSpacing: '0.06em', lineHeight: 1 }}>
                 {[0, 1, 2].map((i) => (i < stars ? STAR_FILLED : STAR_EMPTY)).join('')}
               </span>
-              {!unlocked && <span style={{ fontSize: 9, color: '#bbc3cf', lineHeight: 1 }}>locked</span>}
+              {!unlocked && <span style={{ fontSize: 7, color: '#bbc3cf', lineHeight: 1 }}>locked</span>}
             </button>
           );
         })}

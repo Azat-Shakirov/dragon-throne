@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import type { GameEngine } from '../engine/GameEngine';
+import { THEME_FONT } from './menuStyles';
 
 interface Props {
   engineRef: MutableRefObject<GameEngine | null>;
@@ -69,7 +70,7 @@ const chipStyle: React.CSSProperties = {
   background: 'rgba(20, 22, 28, 0.85)',
   border: '1px solid rgba(255,255,255,0.10)',
   borderRadius: 6,
-  fontFamily: 'system-ui, sans-serif',
+  fontFamily: THEME_FONT,
   fontSize: 12,
   fontWeight: 600,
   color: '#cfd3dc',

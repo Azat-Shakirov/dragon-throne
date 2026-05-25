@@ -95,7 +95,7 @@ export function initMusicPlayer(initialVolume: number): void {
     }
     void ctx.resume();
     started = true;
-    playScene(currentScene);
+    playScene(currentScene, false);
     removeGestureListeners();
   };
 
@@ -127,13 +127,22 @@ function buildTracks(audioCtx: AudioContext): void {
   });
 }
 
-// Play one scene's track and pause the other. Tracks resume from where
-// they left off so the menu melody is continuous across game visits.
-function playScene(scene: Scene): void {
+// Play one scene's track and pause the other. When `restart` is true the
+// incoming track is rewound to 0 first — used whenever the player crosses
+// in/out of a level (and on level restart) so the song starts fresh
+// rather than resuming mid-phrase.
+function playScene(scene: Scene, restart: boolean): void {
   (['menu', 'game'] as Scene[]).forEach((s) => {
     const track = tracks[s];
     if (!track) return;
     if (s === scene) {
+      if (restart) {
+        try {
+          track.el.currentTime = 0;
+        } catch {
+          // Some browsers throw if the media isn't seekable yet; ignore.
+        }
+      }
       void track.el.play().catch(() => {
         // Autoplay still blocked — the next gesture re-arms via tryStart.
       });
@@ -146,9 +155,20 @@ function playScene(scene: Scene): void {
 export function setMusicScene(scene: Scene): void {
   if (currentScene === scene) return;
   currentScene = scene;
-  // Only act once the graph exists (post-gesture). Before that, tryStart
-  // will play whatever currentScene is when it fires.
-  if (started) playScene(scene);
+  // Scene actually changed (menu↔game) — rewind the incoming track so the
+  // melody restarts when crossing in/out of a level. Same-scene navigation
+  // (menu→settings→credits) early-returns above, so the menu melody is NOT
+  // restarted on every menu click. Only acts post-gesture (graph exists);
+  // before that, tryStart plays whatever currentScene is when it fires.
+  if (started) playScene(scene, true);
+}
+
+// Force the in-game track to restart from 0. GameView calls this on every
+// engine boot (initial entry, level restart, next level) — restart keeps
+// the route/scene unchanged, so setMusicScene wouldn't fire on its own.
+export function restartGameMusic(): void {
+  currentScene = 'game';
+  if (started) playScene('game', true);
 }
 
 export function setMusicVolume(v: number): void {

@@ -12,7 +12,7 @@
 
 import type { TutorialDef } from '../engine/content/ContentLibrary';
 import { playSfx } from '../audio/sfxPlayer';
-import { buttonStyle } from './menuStyles';
+import { buttonStyle, THEME_FONT } from './menuStyles';
 import parchmentUrl from '../render/sprites/ui/parchment-banner.png';
 
 interface Props {
@@ -42,7 +42,7 @@ const backdropStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   zIndex: 50,
-  fontFamily: 'system-ui, sans-serif',
+  fontFamily: THEME_FONT,
 };
 
 // 9-slice the parchment scroll. Source 512×419; the rollers occupy

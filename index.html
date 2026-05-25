@@ -5,6 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dragon's Throne</title>
     <style>
+      /* v2.10.1: theme font. IM Fell English — an old printing-press serif
+         that matches the painterly castle aesthetic. Self-hosted from
+         public/fonts/ (served at /fonts/) so the game has no runtime
+         dependency on Google Fonts. `swap` shows the serif fallback until
+         the woff2 loads. Applied game-wide via the body font below; the
+         shared THEME_FONT constant in menuStyles.ts mirrors this stack for
+         the inline-styled components. */
+      @font-face {
+        font-family: 'IM Fell English';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('/fonts/im-fell-english-regular.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'IM Fell English';
+        font-style: italic;
+        font-weight: 400;
+        font-display: swap;
+        src: url('/fonts/im-fell-english-italic.woff2') format('woff2');
+      }
       html, body, #root {
         margin: 0;
         padding: 0;
@@ -13,7 +34,7 @@
         overflow: hidden;
       }
       body {
-        font-family: system-ui, -apple-system, sans-serif;
+        font-family: 'IM Fell English', Georgia, 'Times New Roman', serif;
         color: #eee;
       }
       /* v2.10.0: hover/active feedback for the wood-plaque menu buttons
@@ -44,6 +65,28 @@
       }
       .dt-level-btn:active:not(:disabled) {
         transform: scale(1);
+      }
+      /* v2.10.1: hover for the LevelSelect unit-type (archetype) chips.
+         The selected chip's azure glow lives in .dt-chip-selected (moved
+         out of an inline filter) so the hover brightness can layer on top
+         of it via the combined :hover rule below. */
+      .dt-chip {
+        transition: filter 120ms ease, transform 120ms ease;
+      }
+      .dt-chip:hover:not(:disabled) {
+        filter: brightness(1.15) drop-shadow(0 0 6px rgba(245, 200, 120, 0.5));
+        transform: translateY(-1px);
+      }
+      .dt-chip:active:not(:disabled) {
+        transform: translateY(0);
+        filter: brightness(1.06);
+      }
+      .dt-chip-selected {
+        filter: drop-shadow(0 0 6px rgba(61, 169, 252, 0.85));
+      }
+      .dt-chip-selected:hover:not(:disabled) {
+        filter: drop-shadow(0 0 6px rgba(61, 169, 252, 0.85)) brightness(1.15);
+        transform: translateY(-1px);
       }
     </style>
   </head>

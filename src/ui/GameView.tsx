@@ -18,6 +18,7 @@ import { HudTimer } from './HudTimer';
 import type { TutorialDef } from '../engine/content/ContentLibrary';
 import type { NodeId } from '../types';
 import type { ArchetypeId, LevelDef } from '../engine/content/ContentLibrary';
+import { restartGameMusic } from '../audio/musicPlayer';
 import { useHudStore } from '../store/hudStore';
 import { useSessionStore } from '../store/sessionStore';
 import { useProgressStore } from '../store/progressStore';
@@ -70,6 +71,10 @@ export function GameView({ levelId }: GameViewProps) {
     let engineRef: GameEngine | null = null;
     let availableLevels: number[] = [];
     recordedRef.current = false;
+    // Restart the in-game song from the top on every level (re)boot —
+    // covers initial entry, the R-key / pause-menu restart, and next-level.
+    // Crossing back out to the menu is handled by App's setMusicScene.
+    restartGameMusic();
 
     const handleKey = (e: KeyboardEvent) => {
       if (e.repeat) return;
