@@ -11,12 +11,18 @@ import { useSessionStore } from '../../store/sessionStore';
 import { loadContent } from '../../engine/content/ContentLoader';
 import { LevelSchema } from '../../engine/content/schemas';
 import type {
+  ArchetypeId,
   ContentLibrary,
   LevelDef,
   LevelNodeDef,
   LevelPlayerDef,
 } from '../../engine/content/ContentLibrary';
 import type { FactionId, NodeTypeId } from '../../types';
+
+// v2.11.0: deterministic unit-type (archetype) order for the per-player
+// editor dropdown. Multiple players may share the same faction AND/OR the
+// same unit type — there is no uniqueness constraint.
+const ARCHETYPE_IDS: ArchetypeId[] = ['infantry', 'archer', 'knight', 'cavalry', 'mage'];
 
 // Wall shape is defined inline on LevelDef.terrain; alias it here for the
 // editor's local helpers without modifying the public type.
@@ -459,6 +465,15 @@ export function EditorView() {
     }));
   }
 
+  // v2.11.0: set a player's unit type (archetype). Independent of faction —
+  // any number of players may share the same unit type.
+  function updatePlayerArchetype(playerId: string, archetype: ArchetypeId) {
+    setLevel((lv) => ({
+      ...lv,
+      players: lv.players.map((p) => (p.id === playerId ? { ...p, archetype } : p)),
+    }));
+  }
+
   function addPlayer() {
     const aiCount = level.players.filter((p) => p.type === 'ai').length;
     const id = `ai${aiCount + 1}`;
@@ -506,6 +521,16 @@ export function EditorView() {
           onChange={(e) => setLevel({ ...level, id: Number(e.target.value) })}
           style={{ ...selectStyle, width: 80 }}
         />
+        {/* v2.11.0: flag this level as a Battle Royale skirmish map. BR maps
+            appear in the Battle Royale grid and are hidden from Campaign. */}
+        <label style={checkboxLabelStyle} title="Show this map in Battle Royale (hidden from Campaign)">
+          <input
+            type="checkbox"
+            checked={level.battleRoyale === true}
+            onChange={(e) => setLevel({ ...level, battleRoyale: e.target.checked || undefined })}
+          />
+          Battle Royale map
+        </label>
         <div style={{ flex: 1 }} />
         <button style={{ ...smallButtonStyle, background: '#3da9fc', color: '#0a1018', fontWeight: 700 }} onClick={saveToFile}>
           Save
@@ -573,21 +598,41 @@ export function EditorView() {
 
         <div style={sidebarStyle}>
           <h3 style={sectionTitleStyle}>Players</h3>
+          {/* v2.11.0: each player picks a faction (banner colour) AND a unit
+              type independently. Duplicates of either are allowed. */}
           {level.players.map((p) => (
-            <div key={p.id} style={playerRowStyle}>
-              <span style={{ ...colorChip, background: p.color }} />
-              <span style={{ minWidth: 36 }}>{p.id}</span>
-              <span style={{ opacity: 0.6, fontSize: 11 }}>{p.type}</span>
-              <select
-                value={p.faction}
-                onChange={(e) => updatePlayerFaction(p.id, e.target.value as FactionId)}
-                style={{ ...selectStyle, flex: 1 }}
-              >
-                {factionIds.map((fid) => <option key={fid} value={fid}>{fid}</option>)}
-              </select>
-              {p.id !== 'p1' && (
-                <button style={smallButtonStyle} onClick={() => removePlayer(p.id)}>×</button>
-              )}
+            <div key={p.id} style={playerCardStyle}>
+              <div style={playerCardHeadStyle}>
+                <span style={{ ...colorChip, background: p.color }} />
+                <span style={{ minWidth: 36, fontWeight: 600 }}>{p.id}</span>
+                <span style={{ opacity: 0.6, fontSize: 11 }}>{p.type}</span>
+                <div style={{ flex: 1 }} />
+                {p.id !== 'p1' && (
+                  <button style={smallButtonStyle} onClick={() => removePlayer(p.id)}>×</button>
+                )}
+              </div>
+              <div style={playerCardControlsStyle}>
+                <label style={miniFieldStyle}>
+                  <span style={inlineLabelStyle}>faction</span>
+                  <select
+                    value={p.faction}
+                    onChange={(e) => updatePlayerFaction(p.id, e.target.value as FactionId)}
+                    style={{ ...selectStyle, flex: 1, minWidth: 0 }}
+                  >
+                    {factionIds.map((fid) => <option key={fid} value={fid}>{fid}</option>)}
+                  </select>
+                </label>
+                <label style={miniFieldStyle}>
+                  <span style={inlineLabelStyle}>unit</span>
+                  <select
+                    value={p.archetype}
+                    onChange={(e) => updatePlayerArchetype(p.id, e.target.value as ArchetypeId)}
+                    style={{ ...selectStyle, flex: 1, minWidth: 0 }}
+                  >
+                    {ARCHETYPE_IDS.map((aid) => <option key={aid} value={aid}>{aid}</option>)}
+                  </select>
+                </label>
+              </div>
             </div>
           ))}
           <button style={{ ...smallButtonStyle, marginTop: 6 }} onClick={addPlayer}>+ Add AI</button>
@@ -739,7 +784,18 @@ const sectionTitleStyle: React.CSSProperties = {
   fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase',
   color: '#7a8090', margin: '14px 0 6px',
 };
-const playerRowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 };
+const playerCardStyle: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8,
+  padding: 8, borderRadius: 6, background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.08)',
+};
+const playerCardHeadStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6 };
+const playerCardControlsStyle: React.CSSProperties = { display: 'flex', gap: 6 };
+const miniFieldStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, flex: 1, minWidth: 0 };
+const checkboxLabelStyle: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#cdd3dd',
+  cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap',
+};
 const colorChip: React.CSSProperties = { width: 14, height: 14, borderRadius: 3, border: '1px solid rgba(255,255,255,0.2)' };
 const fieldStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6 };
 const hintStyle: React.CSSProperties = { fontSize: 12, color: '#8a92a0', lineHeight: 1.5 };

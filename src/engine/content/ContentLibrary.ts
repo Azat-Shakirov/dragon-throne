@@ -149,6 +149,12 @@ export interface LevelDef {
   // player's faction to 'azure'. Replaces the v2.8.0 letPlayerChooseFaction
   // flag (faction is no longer a player-facing pick).
   letPlayerChooseArchetype?: boolean;
+  // v2.11.0 Battle Royale: when true this level is a skirmish map shown
+  // in the Battle Royale map grid (not the Campaign ladder). The BR setup
+  // screen lets the player pick their unit type + a global AI difficulty
+  // before launching it; campaign progress/stars are never recorded for
+  // these. Set via the dev level editor's "Battle Royale map" checkbox.
+  battleRoyale?: boolean;
   introducesNodeTypes: string[];
   // v2.8.0 — renamed from introducesLiquids.
   introducesFactions: string[];

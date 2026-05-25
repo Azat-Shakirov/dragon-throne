@@ -177,6 +177,9 @@ export const LevelSchema = z.object({
   // human player's faction to 'azure' (the user always plays blue).
   // Replaces the v2.8.0 `letPlayerChooseFaction` flag.
   letPlayerChooseArchetype: z.boolean().optional(),
+  // v2.11.0 — flags a level as a Battle Royale skirmish map (shown in the
+  // BR grid, hidden from Campaign). Set via the dev editor's checkbox.
+  battleRoyale: z.boolean().optional(),
   introducesNodeTypes: z.array(z.string()),
   // v2.8.0 — renamed from introducesLiquids.
   introducesFactions: z.array(z.string()),

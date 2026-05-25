@@ -21,7 +21,7 @@ import type { NodeId } from '../types';
 import type { ArchetypeId, LevelDef } from '../engine/content/ContentLibrary';
 import { restartGameMusic } from '../audio/musicPlayer';
 import { useHudStore } from '../store/hudStore';
-import { useSessionStore } from '../store/sessionStore';
+import { useSessionStore, type AIDifficulty } from '../store/sessionStore';
 import { useProgressStore } from '../store/progressStore';
 import { computePlayerTotals } from '../store/computeTotals';
 
@@ -51,7 +51,13 @@ export function GameView({ levelId }: GameViewProps) {
   const togglePause = useSessionStore((s) => s.togglePause);
   const startLevel = useSessionStore((s) => s.startLevel);
   const exitToMenu = useSessionStore((s) => s.exitToMenu);
+  const navigate = useSessionStore((s) => s.navigate);
+  // v2.11.0: campaign vs battle-royale. BR matches apply the player's
+  // chosen archetype + difficulty overrides, never record campaign
+  // progress, and have no "next level" (each map is a standalone skirmish).
+  const gameMode = useSessionStore((s) => s.gameMode);
   const recordCompletion = useProgressStore((s) => s.recordCompletion);
+  const isBattleRoyale = gameMode === 'battleRoyale';
 
   // Sorted level ids (cached) so the EndScreen knows whether a "Next level"
   // exists. loadContent() is memoized internally; the useMemo just avoids
@@ -112,6 +118,8 @@ export function GameView({ levelId }: GameViewProps) {
       if (key === 'r') {
         setRestartCounter((c) => c + 1);
       } else if (key === 'n') {
+        // Campaign-only: BR skirmishes are standalone, no "next level".
+        if (useSessionStore.getState().gameMode !== 'campaign') return;
         if (engineRef && engineRef.world.status === 'won') {
           const next = nextLevelId(levelId, availableLevels);
           if (next !== null) startLevel(next);
@@ -130,17 +138,16 @@ export function GameView({ levelId }: GameViewProps) {
         if (!baseLevel) {
           throw new Error(`Level ${levelId} not found.`);
         }
-        // Archetype override is gated on the level being a challenge-tier
-        // level (letPlayerChooseArchetype). On L1-30 we always honor the
-        // designer's choice and ignore the LevelSelect picker. When the
-        // override fires it also forces the human player's faction to
-        // 'azure' — the user always plays blue on challenge levels.
-        const overrideArchetype = baseLevel.letPlayerChooseArchetype
-          ? useSessionStore.getState().playerStartArchetype
-          : null;
-        const level = overrideArchetype
-          ? applyPlayerArchetypeOverride(baseLevel, overrideArchetype)
-          : baseLevel;
+        // v2.11.0: Battle Royale skirmishes apply the player's setup-screen
+        // picks — chosen unit type + 'azure' faction for the human, and the
+        // chosen global difficulty for EVERY AI on the map. Campaign levels
+        // always honor the designer's player setup (no overrides).
+        const session = useSessionStore.getState();
+        let level: LevelDef = baseLevel;
+        if (session.gameMode === 'battleRoyale') {
+          const archetype = session.playerStartArchetype ?? 'infantry';
+          level = applyBattleRoyaleOverrides(baseLevel, archetype, session.aiDifficulty);
+        }
         engine = new GameEngine(level, content);
         engineRef = engine;
         // v2.9.5: the in-game ObjectiveBanner overlay was retired
@@ -216,7 +223,10 @@ export function GameView({ levelId }: GameViewProps) {
 
         if (
           engine.world.status === 'won' &&
-          !recordedRef.current
+          !recordedRef.current &&
+          // v2.11.0: Battle Royale wins are skirmish-only — never unlock
+          // campaign levels or record stars.
+          useSessionStore.getState().gameMode === 'campaign'
         ) {
           recordedRef.current = true;
           recordCompletion(levelId, {
@@ -295,10 +305,14 @@ export function GameView({ levelId }: GameViewProps) {
         <EndScreen
           status={endStatus}
           levelName={levelName}
-          hasNext={nextLevel !== null}
-          onNext={() => { if (nextLevel !== null) startLevel(nextLevel); }}
+          // BR skirmishes are standalone: no "next level", and the menu
+          // button returns to the Battle Royale map picker rather than the
+          // main menu.
+          hasNext={!isBattleRoyale && nextLevel !== null}
+          onNext={() => { if (!isBattleRoyale && nextLevel !== null) startLevel(nextLevel); }}
           onRestart={() => { setEndStatus('playing'); setRestartCounter((c) => c + 1); }}
-          onMenu={exitToMenu}
+          onMenu={isBattleRoyale ? () => navigate('battleRoyale') : exitToMenu}
+          menuLabel={isBattleRoyale ? 'Battle Royale' : 'Main menu'}
         />
       )}
       {!paused && endStatus === 'playing' && engineRefForMenu.current && sessionRef.current && (
@@ -336,16 +350,25 @@ function nextLevelId(current: number, available: number[]): number | null {
   return available[idx + 1] ?? null;
 }
 
-// v2.9.0: returns a shallow-cloned LevelDef whose human player's
-// `archetype` is swapped to `archetypeId` AND whose `faction` is forced
-// to 'azure' (the user always plays blue on challenge-tier levels).
-// buildWorldFromLevel propagates the faction override to every node the
-// human owns; enemy + neutral nodes are left alone.
-function applyPlayerArchetypeOverride(level: LevelDef, archetypeId: ArchetypeId): LevelDef {
+// v2.11.0: returns a shallow-cloned LevelDef set up for a Battle Royale
+// skirmish from the player's setup-screen picks:
+//   • the human player's `archetype` is swapped to the chosen unit type and
+//     their `faction` is forced to 'azure' (the player always plays blue) —
+//     buildWorldFromLevel propagates the faction onto every node they own;
+//   • EVERY AI player's `aiConfigId` is overridden to the chosen difficulty
+//     (easy/normal/hard), so the whole field plays at one strength.
+// Enemy/neutral factions + the map layout are otherwise untouched.
+function applyBattleRoyaleOverrides(
+  level: LevelDef,
+  archetypeId: ArchetypeId,
+  difficulty: AIDifficulty,
+): LevelDef {
   return {
     ...level,
     players: level.players.map((p) =>
-      p.type === 'human' ? { ...p, archetype: archetypeId, faction: 'azure' } : p,
+      p.type === 'human'
+        ? { ...p, archetype: archetypeId, faction: 'azure' }
+        : { ...p, aiConfigId: difficulty },
     ),
   };
 }

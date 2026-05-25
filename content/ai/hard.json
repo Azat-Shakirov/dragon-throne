@@ -1,0 +1,16 @@
+{
+  "id": "hard",
+  "decisionIntervalMs": 1200,
+  "weights": {
+    "aggression": 0.9,
+    "defense": 0.3,
+    "economy": 0.5,
+    "spellUse": 0.9
+  },
+  "thresholds": {
+    "minSourceUnits": 8,
+    "attackRatio": 0.9,
+    "upgradeUnitsReserve": 22
+  },
+  "strategies": ["SpellCastStrategy", "ConcoctStrategy", "VultureStrategy", "UpgradeStrategy", "DumbStrategy"]
+}

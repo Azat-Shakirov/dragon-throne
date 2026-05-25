@@ -1,0 +1,335 @@
+{
+  "id": 41,
+  "name": "Battle Royale - Map #1",
+  "tutorialKey": null,
+  "battleRoyale": true,
+  "introducesNodeTypes": [],
+  "introducesFactions": [],
+  "map": {
+    "width": 1280,
+    "height": 720,
+    "background": "stone"
+  },
+  "terrain": {
+    "walls": [
+      {
+        "id": "w_1",
+        "points": [
+          [
+            727,
+            561
+          ],
+          [
+            1034,
+            561
+          ]
+        ]
+      },
+      {
+        "id": "w_2",
+        "points": [
+          [
+            242,
+            562
+          ],
+          [
+            560,
+            560
+          ]
+        ]
+      },
+      {
+        "id": "w_3",
+        "points": [
+          [
+            1035,
+            160
+          ],
+          [
+            1041,
+            478
+          ]
+        ]
+      },
+      {
+        "id": "w_4",
+        "points": [
+          [
+            240,
+            161
+          ],
+          [
+            242,
+            484
+          ]
+        ]
+      },
+      {
+        "id": "w_5",
+        "points": [
+          [
+            400,
+            162
+          ],
+          [
+            881,
+            161
+          ]
+        ]
+      }
+    ]
+  },
+  "players": [
+    {
+      "id": "p1",
+      "type": "human",
+      "color": "#3da9fc",
+      "faction": "azure",
+      "archetype": "infantry"
+    },
+    {
+      "id": "ai1",
+      "type": "ai",
+      "color": "#e63946",
+      "faction": "verdant",
+      "archetype": "infantry"
+    },
+    {
+      "id": "ai2",
+      "type": "ai",
+      "color": "#1a1a24",
+      "faction": "amethyst",
+      "archetype": "infantry"
+    },
+    {
+      "id": "ai3",
+      "type": "ai",
+      "color": "#5cd65c",
+      "faction": "shadow",
+      "archetype": "infantry"
+    },
+    {
+      "id": "ai4",
+      "type": "ai",
+      "color": "#a01010",
+      "faction": "crimson",
+      "archetype": "infantry"
+    },
+    {
+      "id": "ai5",
+      "type": "ai",
+      "color": "#7a3da9",
+      "faction": "azure",
+      "archetype": "infantry"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_1",
+      "position": [
+        644,
+        39
+      ],
+      "ownerId": "p1",
+      "nodeType": "house",
+      "level": 1,
+      "faction": "azure",
+      "units": 10
+    },
+    {
+      "id": "n_2",
+      "position": [
+        276,
+        684
+      ],
+      "ownerId": "ai3",
+      "nodeType": "house",
+      "level": 1,
+      "faction": "shadow",
+      "units": 10
+    },
+    {
+      "id": "n_3",
+      "position": [
+        1003,
+        684
+      ],
+      "ownerId": "ai2",
+      "nodeType": "house",
+      "level": 1,
+      "faction": "amethyst",
+      "units": 10
+    },
+    {
+      "id": "n_4",
+      "position": [
+        1159,
+        242
+      ],
+      "ownerId": "ai5",
+      "nodeType": "house",
+      "level": 1,
+      "faction": "azure",
+      "units": 10
+    },
+    {
+      "id": "n_5",
+      "position": [
+        122,
+        242
+      ],
+      "ownerId": "ai4",
+      "nodeType": "house",
+      "level": 1,
+      "faction": "crimson",
+      "units": 10
+    },
+    {
+      "id": "n_6",
+      "position": [
+        1160,
+        524
+      ],
+      "ownerId": null,
+      "nodeType": "house",
+      "level": 1,
+      "faction": "azure",
+      "units": 10
+    },
+    {
+      "id": "n_8",
+      "position": [
+        641,
+        684
+      ],
+      "ownerId": null,
+      "nodeType": "house",
+      "level": 1,
+      "faction": "azure",
+      "units": 10
+    },
+    {
+      "id": "n_9",
+      "position": [
+        282,
+        38
+      ],
+      "ownerId": null,
+      "nodeType": "house",
+      "level": 1,
+      "faction": "azure",
+      "units": 10
+    },
+    {
+      "id": "n_10",
+      "position": [
+        1002,
+        45
+      ],
+      "ownerId": null,
+      "nodeType": "house",
+      "level": 1,
+      "faction": "azure",
+      "units": 10
+    },
+    {
+      "id": "n_11",
+      "position": [
+        119,
+        516
+      ],
+      "ownerId": null,
+      "nodeType": "house",
+      "level": 1,
+      "faction": "azure",
+      "units": 10
+    },
+    {
+      "id": "n_7",
+      "position": [
+        918,
+        437
+      ],
+      "ownerId": null,
+      "nodeType": "tower",
+      "level": 2,
+      "faction": "azure",
+      "units": 10
+    },
+    {
+      "id": "n_12",
+      "position": [
+        359,
+        444
+      ],
+      "ownerId": null,
+      "nodeType": "tower",
+      "level": 2,
+      "faction": "azure",
+      "units": 10
+    },
+    {
+      "id": "n_13",
+      "position": [
+        401,
+        205
+      ],
+      "ownerId": null,
+      "nodeType": "tower",
+      "level": 2,
+      "faction": "azure",
+      "units": 10
+    },
+    {
+      "id": "n_14",
+      "position": [
+        878,
+        206
+      ],
+      "ownerId": null,
+      "nodeType": "tower",
+      "level": 2,
+      "faction": "azure",
+      "units": 10
+    },
+    {
+      "id": "n_15",
+      "position": [
+        641,
+        481
+      ],
+      "ownerId": null,
+      "nodeType": "tower",
+      "level": 2,
+      "faction": "azure",
+      "units": 10
+    },
+    {
+      "id": "n_16",
+      "position": [
+        642,
+        321
+      ],
+      "ownerId": null,
+      "nodeType": "lab",
+      "level": 3,
+      "faction": "azure",
+      "units": 10
+    }
+  ],
+  "winCondition": {
+    "type": "controlAll"
+  },
+  "starThresholds": {
+    "time": [
+      600000,
+      480000,
+      360000
+    ],
+    "units": [
+      200,
+      150,
+      100
+    ]
+  }
+}

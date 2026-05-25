@@ -20,9 +20,12 @@ interface EndScreenProps {
   onNext: () => void;
   onRestart: () => void;
   onMenu: () => void;
+  // v2.11.0: label for the bottom nav button. Campaign uses "Main menu";
+  // Battle Royale uses "Battle Royale" (returns to the map picker).
+  menuLabel?: string;
 }
 
-export function EndScreen({ status, levelName, hasNext, onNext, onRestart, onMenu }: EndScreenProps) {
+export function EndScreen({ status, levelName, hasNext, onNext, onRestart, onMenu, menuLabel = 'Main menu' }: EndScreenProps) {
   const won = status === 'won';
   return (
     <div style={parchmentBackdropStyle}>
@@ -44,7 +47,7 @@ export function EndScreen({ status, levelName, hasNext, onNext, onRestart, onMen
             Restart
           </button>
           <button className="dt-btn" style={buttonStyle} onClick={() => { playSfx('click'); onMenu(); }}>
-            Main menu
+            {menuLabel}
           </button>
         </div>
       </div>

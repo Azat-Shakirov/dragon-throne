@@ -1,0 +1,16 @@
+{
+  "id": "normal",
+  "decisionIntervalMs": 2000,
+  "weights": {
+    "aggression": 0.6,
+    "defense": 0.4,
+    "economy": 0.6,
+    "spellUse": 0.3
+  },
+  "thresholds": {
+    "minSourceUnits": 12,
+    "attackRatio": 1.0,
+    "upgradeUnitsReserve": 28
+  },
+  "strategies": ["VultureStrategy", "UpgradeStrategy", "DumbStrategy"]
+}
