@@ -237,16 +237,20 @@ function MapPreview({ level }: { level: LevelDef | null }) {
     }
 
     // Nodes — dots coloured by owning banner; bigger for higher-level nodes.
+    // Owned (player/AI) dots are drawn noticeably larger with a bright rim so
+    // the contested starting positions stand out; neutral dots are smaller +
+    // subdued so they read as the background prizes to capture.
     for (const n of level.nodes) {
       const owner = n.ownerId ? level.players.find((p) => p.id === n.ownerId) : null;
+      const owned = owner != null;
       const color = owner?.color ?? '#8b8f99';
-      const r = 5 + n.level * 1.5;
+      const r = (owned ? 9 : 5) + n.level * 1.4;
       ctx.beginPath();
       ctx.arc(tx(n.position[0]), ty(n.position[1]), r, 0, Math.PI * 2);
       ctx.fillStyle = color;
       ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.lineWidth = owned ? 3.5 : 1.5;
+      ctx.strokeStyle = owned ? 'rgba(255, 255, 255, 0.92)' : 'rgba(0, 0, 0, 0.5)';
       ctx.stroke();
     }
   }, [level]);

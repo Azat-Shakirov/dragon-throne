@@ -7,7 +7,7 @@ import { Container, Graphics, Sprite, Text } from 'pixi.js';
 import type { UnitGroup } from '../../engine/entities/UnitGroup';
 import type { ContentLibrary } from '../../engine/content/ContentLibrary';
 import type { World } from '../../engine/World';
-import { colorFromHex } from '../shapes';
+import { colorFromHex, ELEMENT_SCALE } from '../shapes';
 import { getUnitFrame } from '../sprites/unitSprites';
 
 // Sprite display height at world.visualScale = 1. Soldiers ought to read
@@ -153,7 +153,8 @@ export class UnitGroupView {
       this.sprite.visible = true;
       this.sprite.texture = tex;
       const cs = countScale(ug.count);
-      const displayH = SPRITE_BASE_DISPLAY_HEIGHT * world.visualScale * cs;
+      // v2.11.4: × ELEMENT_SCALE so units shrink in step with nodes/projectiles.
+      const displayH = SPRITE_BASE_DISPLAY_HEIGHT * world.visualScale * cs * ELEMENT_SCALE;
       const baseScale = displayH / tex.height;
       this.sprite.scale.set(this.facingRight ? baseScale : -baseScale, baseScale);
       this.droplet.clear();
@@ -235,7 +236,7 @@ export class UnitGroupView {
       const fillColor = factionDef ? colorFromHex(factionDef.color) : 0x3da9fc;
       const baseRadius = 5;
       const raw = Math.min(baseRadius + Math.sqrt(Math.max(1, ug.count)) * 0.6, 14);
-      const radius = raw * world.visualScale;
+      const radius = raw * world.visualScale * ELEMENT_SCALE;
       this.droplet
         .clear()
         .circle(0, 0, radius)

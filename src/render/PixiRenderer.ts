@@ -33,7 +33,7 @@ import { pathCacheKey } from '../engine/PathSystem';
 import { NodeView } from './views/NodeView';
 import { UnitGroupView } from './views/UnitGroupView';
 import { SelectionBoxView } from './views/SelectionBoxView';
-import { colorFromHex } from './shapes';
+import { colorFromHex, ELEMENT_SCALE } from './shapes';
 import type { SessionState } from './SessionState';
 import { loadNodeTextures } from './sprites/nodeSprites';
 import { loadUnitTextures } from './sprites/unitSprites';
@@ -137,8 +137,11 @@ const SABOTAGE_OVERLAY_LIFE_MS = 5000;
 const SABOTAGE_OVERLAY_SIZE_PX = 84;
 // v2.11.3: world-px margin reserved around the map by fitWorldToHost so node
 // labels (level numeral above, unit count below) aren't clipped at the
-// viewport edge. ~one node-height of breathing room top/bottom/left/right.
-const MAP_FIT_MARGIN_PX = 64;
+// viewport edge.
+// v2.11.4: cut 64 → 24 — nodes/labels are smaller now (ELEMENT_SCALE) so they
+// need far less edge room, and the big margin was leaving an ugly dark
+// letterbox around the map. 24 still covers labels on reasonably-inset nodes.
+const MAP_FIT_MARGIN_PX = 24;
 
 export class PixiRenderer {
   readonly app: Application;
@@ -528,8 +531,9 @@ export class PixiRenderer {
     const aliveKeys = new Set<number>();
     // Size by LONG edge so the longest dimension matches
     // PROJECTILE_LONG_EDGE_PX regardless of the source's aspect ratio.
-    // Scales with per-level visualScale to track unit size on sparse maps.
-    const baseLE = PROJECTILE_LONG_EDGE_PX * world.visualScale;
+    // Scales with per-level visualScale to track unit size on sparse maps,
+    // and × ELEMENT_SCALE (v2.11.4) so projectiles shrink with units/nodes.
+    const baseLE = PROJECTILE_LONG_EDGE_PX * world.visualScale * ELEMENT_SCALE;
     for (let i = this.beams.length - 1; i >= 0; i--) {
       const b = this.beams[i]!;
       const age = nowMs - b.birthMs;

@@ -40,6 +40,15 @@ export const NODE_SPRITE_SCALE_FACTOR: Record<NodeTypeId, number> = {
 /** @deprecated v2.8.1 — use NODE_SPRITE_SCALE_FACTOR[type] instead. */
 export const TOWER_SPRITE_SCALE_FACTOR = NODE_SPRITE_SCALE_FACTOR.tower;
 
+// v2.11.4: global element-size multiplier (< 1) applied on top of the
+// per-level visualScale, so every node / unit / projectile renders a bit
+// smaller relative to the map. The map then reads as more spacious (and the
+// renderer can letterbox less — see MAP_FIT_MARGIN_PX), so nodes don't have
+// to be crammed against the map edges. Applied in metricsForType (nodes:
+// render AND hit-test, since both call this), and imported by UnitGroupView
+// (units) + PixiRenderer (projectiles) so all three scale together.
+export const ELEMENT_SCALE = 0.85;
+
 export function metricsForType(type: NodeTypeId, level: number, visualScale = 1): ShapeMetrics {
   // v2.7.3 sizes; v2.7.6 multiplies by per-level visualScale so sparse
   // levels render larger nodes without applying any camera transform
@@ -51,8 +60,8 @@ export function metricsForType(type: NodeTypeId, level: number, visualScale = 1)
     tower: 45,
   };
   const base = baseByType[type];
-  const size = (base + (level - 1) * 3) * visualScale;
-  return { size, cornerRadius: 6 * visualScale, kind: shapeKindForType(type) };
+  const size = (base + (level - 1) * 3) * visualScale * ELEMENT_SCALE;
+  return { size, cornerRadius: 6 * visualScale * ELEMENT_SCALE, kind: shapeKindForType(type) };
 }
 
 export function colorFromHex(hex: string): number {
