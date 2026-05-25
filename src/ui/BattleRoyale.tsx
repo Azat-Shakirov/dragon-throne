@@ -187,8 +187,8 @@ export function BattleRoyale() {
 // Draws the selected level's terrain to scale on a small canvas: biome
 // floor, walls, and nodes coloured by their owner's banner (neutral = grey).
 // Like WC3's minimap thumbnail — no per-map screenshot assets needed.
-const PREVIEW_W = 768;
-const PREVIEW_H = 432;
+const PREVIEW_W = 1024;
+const PREVIEW_H = 576;
 
 function MapPreview({ level }: { level: LevelDef | null }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
@@ -252,7 +252,7 @@ function MapPreview({ level }: { level: LevelDef | null }) {
   }, [level]);
 
   return (
-    <div style={previewFrameStyle}>
+    <div style={previewWrapStyle}>
       <canvas ref={ref} width={PREVIEW_W} height={PREVIEW_H} style={previewCanvasStyle} />
     </div>
   );
@@ -333,20 +333,27 @@ const mapGridStyle: React.CSSProperties = {
   paddingRight: 4,
 };
 
-const previewFrameStyle: React.CSSProperties = {
+const previewWrapStyle: React.CSSProperties = {
   width: '100%',
-  border: '2px solid rgba(245, 201, 91, 0.45)',
-  borderRadius: 8,
-  overflow: 'hidden',
-  background: '#15171c',
-  boxShadow: 'inset 0 0 24px rgba(0,0,0,0.6)',
+  display: 'flex',
+  justifyContent: 'center',
 };
 
+// v2.11.3: the canvas sizes itself to fit BOTH the pane width and a height
+// cap (maxHeight) with `width/height: auto` + intrinsic aspect — so on a wide
+// fullscreen it can no longer grow taller than the pane and get its bottom
+// clipped by the (scrollbar-hidden) overflow. Border lives on the canvas so
+// it always hugs the actual drawn size.
 const previewCanvasStyle: React.CSSProperties = {
   display: 'block',
-  width: '100%',
+  maxWidth: '100%',
+  maxHeight: '40vh',
+  width: 'auto',
   height: 'auto',
-  aspectRatio: `${PREVIEW_W} / ${PREVIEW_H}`,
+  border: '2px solid rgba(245, 201, 91, 0.45)',
+  borderRadius: 8,
+  background: '#15171c',
+  boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
 };
 
 const mapInfoStyle: React.CSSProperties = {

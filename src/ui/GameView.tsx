@@ -46,6 +46,9 @@ export function GameView({ levelId }: GameViewProps) {
   const tutorialOpenRef = useRef(false);
   const engineRefForMenu = useRef<GameEngine | null>(null);
   const sessionRef = useRef<SessionState | null>(null);
+  // v2.11.3: kept so NodeInfoPanel can map world→screen via the live fit
+  // transform (worldToScreen) instead of assuming a 1:1 canvas.
+  const rendererRef = useRef<PixiRenderer | null>(null);
   const paused = useSessionStore((s) => s.paused);
   const setPaused = useSessionStore((s) => s.setPaused);
   const togglePause = useSessionStore((s) => s.togglePause);
@@ -172,6 +175,7 @@ export function GameView({ levelId }: GameViewProps) {
         return;
       }
       renderer = r;
+      rendererRef.current = r;
       const session = createSessionState();
       sessionRef.current = session;
       engineRefForMenu.current = engine;
@@ -259,6 +263,7 @@ export function GameView({ levelId }: GameViewProps) {
       useHudStore.getState().reset();
       input?.destroy();
       renderer?.destroy();
+      rendererRef.current = null;
       sessionRef.current = null;
       engineRefForMenu.current = null;
       setCanvasEl(null);
@@ -320,6 +325,7 @@ export function GameView({ levelId }: GameViewProps) {
           session={sessionRef.current}
           hoveredNodeId={hoveredId}
           canvasEl={canvasEl}
+          renderer={rendererRef.current}
         />
       )}
       {error && (

@@ -135,6 +135,10 @@ const SABOTAGE_OVERLAY_LIFE_MS = 5000;
 // v2.11.2: the sabotage wreath read too large at the shared 120 px — sized
 // down so it hugs the node rather than sprawling over its neighbours.
 const SABOTAGE_OVERLAY_SIZE_PX = 84;
+// v2.11.3: world-px margin reserved around the map by fitWorldToHost so node
+// labels (level numeral above, unit count below) aren't clipped at the
+// viewport edge. ~one node-height of breathing room top/bottom/left/right.
+const MAP_FIT_MARGIN_PX = 64;
 
 export class PixiRenderer {
   readonly app: Application;
@@ -1065,7 +1069,13 @@ export class PixiRenderer {
     const mapW = world.level.map.width;
     const mapH = world.level.map.height;
     if (mapW <= 0 || mapH <= 0 || w <= 0 || h <= 0) return;
-    const scale = Math.min(w / mapW, h / mapH);
+    // v2.11.3: fit the map PLUS a world-space margin so the per-node labels
+    // that sit just OUTSIDE the map rectangle — the level numeral above each
+    // node and the unit count below tower sprites — stay on-screen instead of
+    // being clipped at the viewport edge when the map would otherwise fill it
+    // edge-to-edge (the fullscreen "top/bottom cut off" bug). The map itself
+    // stays centered; only the scale shrinks enough to letterbox the margin.
+    const scale = Math.min(w / (mapW + MAP_FIT_MARGIN_PX * 2), h / (mapH + MAP_FIT_MARGIN_PX * 2));
     const offsetX = Math.round((w - mapW * scale) / 2);
     const offsetY = Math.round((h - mapH * scale) / 2);
     this.worldFitScale = scale;
@@ -1073,6 +1083,21 @@ export class PixiRenderer {
     this.worldFitOffsetY = offsetY;
     this.worldRoot.scale.set(scale);
     this.worldRoot.position.set(offsetX, offsetY);
+  }
+
+  // v2.11.3: forward transform (inverse of screenToWorld) — world coords →
+  // canvas-CSS px. The DOM NodeInfoPanel uses this to anchor itself on the
+  // hovered node; without it the panel used raw world coords and drifted
+  // (too far + slightly left) as the fit scale diverged from 1.
+  worldToScreen(wx: number, wy: number): Vec2 {
+    return {
+      x: wx * this.worldFitScale + this.worldFitOffsetX,
+      y: wy * this.worldFitScale + this.worldFitOffsetY,
+    };
+  }
+
+  get worldScale(): number {
+    return this.worldFitScale || 1;
   }
 
   // Inverse of fitWorldToHost — convert canvas-CSS coords (as reported

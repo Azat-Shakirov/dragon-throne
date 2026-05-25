@@ -13,6 +13,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { GameEngine } from '../engine/GameEngine';
+import type { PixiRenderer } from '../render/PixiRenderer';
 import type { SessionState } from '../render/SessionState';
 import type { NodeId } from '../types';
 import { playSfx } from '../audio/sfxPlayer';
@@ -39,6 +40,10 @@ interface Props {
   // The PIXI canvas element — used to compute screen coords for the
   // anchor. Allowed to be null briefly during mount/unmount.
   canvasEl: HTMLCanvasElement | null;
+  // v2.11.3: the renderer, for mapping the node's WORLD position through
+  // the live fit transform (scale + letterbox offset) to canvas px. Without
+  // it the panel assumed a 1:1 canvas and drifted off the node.
+  renderer?: PixiRenderer | null;
 }
 
 const BASE_UNIT_SPEED_PX_PER_SEC = 90; // v2.7.3 — must match engine BASE_UNIT_SPEED.
@@ -49,7 +54,7 @@ const PANEL_OFFSET_PX = 4;
 const VIEWPORT_PAD = 8;
 const HIDE_DELAY_MS = 180;
 
-export function NodeInfoPanel({ engine, session, hoveredNodeId, canvasEl }: Props) {
+export function NodeInfoPanel({ engine, session, hoveredNodeId, canvasEl, renderer }: Props) {
   const [pinnedId, setPinnedId] = useState<NodeId | null>(null);
   const panelHoverRef = useRef(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -131,16 +136,24 @@ export function NodeInfoPanel({ engine, session, hoveredNodeId, canvasEl }: Prop
   // sits too close to the top to fit the panel, flip below. Clamp
   // horizontally so it stays on-screen.
   const rect = canvasEl?.getBoundingClientRect();
-  const nodeScreenX = (rect?.left ?? 0) + node.position.x;
-  const nodeScreenY = (rect?.top ?? 0) + node.position.y;
+  // v2.11.3: the canvas is NOT 1:1 with world coords — the renderer applies a
+  // uniform fit scale + letterbox offset (fitWorldToHost). Map the node's
+  // world position through that same transform; falling back to identity when
+  // the renderer isn't available (tests / first frame). This fixes the panel
+  // sitting too far from the node and biased left as the scale diverged from 1.
+  const nodeCanvas = renderer
+    ? renderer.worldToScreen(node.position.x, node.position.y)
+    : { x: node.position.x, y: node.position.y };
+  const fitScale = renderer ? renderer.worldScale : 1;
+  const nodeScreenX = (rect?.left ?? 0) + nodeCanvas.x;
+  const nodeScreenY = (rect?.top ?? 0) + nodeCanvas.y;
   // v2.9.9: compute the actual sprite half-height from the same
   // formula NodeView uses (metricsForType × NODE_SPRITE_SCALE_FACTOR),
   // so the panel bottom sits at the exact top edge of THIS node's
-  // sprite rather than a one-size-fits-all guess. Combined with
-  // PANEL_OFFSET_PX = 4 the panel reads as "right above the node"
-  // regardless of node type (house=61, barracks=84, lab=tower=76 at L1).
+  // sprite. v2.11.3: × fitScale to convert the world half-height into the
+  // on-screen pixels the panel is positioned in.
   const nodeMetrics = metricsForType(node.nodeType, node.level, engine.world.visualScale);
-  const nodeHalfHeight = (nodeMetrics.size * NODE_SPRITE_SCALE_FACTOR[node.nodeType]) / 2;
+  const nodeHalfHeight = ((nodeMetrics.size * NODE_SPRITE_SCALE_FACTOR[node.nodeType]) / 2) * fitScale;
   const panelH = panelHeight || 200;
   const aboveTop = nodeScreenY - nodeHalfHeight - PANEL_OFFSET_PX - panelH;
   const fitsAbove = aboveTop >= VIEWPORT_PAD;
@@ -401,19 +414,22 @@ function capitalize(s: string): string {
   return s.length === 0 ? s : s[0]!.toUpperCase() + s.slice(1);
 }
 
+// v2.11.3: re-themed to match the castle UI — a dark-wood panel with a gold
+// rim + gold title (was a generic flat dark-grey card). Pairs with the wood
+// `miniButtonStyle` action buttons already used inside.
 const panelStyle: React.CSSProperties = {
   position: 'fixed',
   width: PANEL_WIDTH,
-  background: 'rgba(20, 22, 28, 0.96)',
-  border: '1px solid rgba(255,255,255,0.15)',
+  background: 'linear-gradient(180deg, rgba(40, 30, 19, 0.97) 0%, rgba(26, 18, 11, 0.97) 100%)',
+  border: '1px solid rgba(245, 201, 91, 0.55)',
   borderRadius: 6,
   padding: 10,
   fontFamily: THEME_FONT,
   fontSize: 12,
-  color: '#e8e8e8',
+  color: '#ecdfc6',
   zIndex: 8,
   pointerEvents: 'auto',
-  boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+  boxShadow: '0 8px 24px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.45)',
 };
 
 const headerStyle: React.CSSProperties = {
@@ -422,7 +438,7 @@ const headerStyle: React.CSSProperties = {
   gap: 6,
   marginBottom: 6,
   paddingBottom: 6,
-  borderBottom: '1px solid rgba(255,255,255,0.10)',
+  borderBottom: '1px solid rgba(245, 201, 91, 0.22)',
 };
 
 const dotStyle: React.CSSProperties = {
@@ -433,14 +449,17 @@ const dotStyle: React.CSSProperties = {
 };
 
 const titleStyle: React.CSSProperties = {
-  fontWeight: 600,
+  fontWeight: 700,
   fontSize: 13,
   flex: 1,
+  color: '#f3d27a',
+  textShadow: '0 1px 2px rgba(0,0,0,0.7)',
 };
 
 const ownerLabelStyle: React.CSSProperties = {
   fontSize: 11,
-  opacity: 0.65,
+  opacity: 0.7,
+  color: '#cdbb96',
 };
 
 const pillGridStyle: React.CSSProperties = {
@@ -455,8 +474,8 @@ const pillStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: 4,
   padding: '3px 6px',
-  background: 'rgba(255,255,255,0.06)',
-  border: '1px solid rgba(255,255,255,0.10)',
+  background: 'rgba(245, 201, 91, 0.10)',
+  border: '1px solid rgba(245, 201, 91, 0.20)',
   borderRadius: 4,
   fontSize: 11,
   fontWeight: 600,
@@ -477,7 +496,7 @@ const pillValueStyle: React.CSSProperties = {
 const sectionStyle: React.CSSProperties = {
   marginTop: 8,
   paddingTop: 8,
-  borderTop: '1px solid rgba(255,255,255,0.10)',
+  borderTop: '1px solid rgba(245, 201, 91, 0.22)',
   display: 'flex',
   flexDirection: 'column',
   gap: 4,
