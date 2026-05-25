@@ -2,7 +2,7 @@
 // Mounted only when sessionStore.route === 'game'. Unmount destroys the
 // engine cleanly. Esc opens the pause menu (engine stops ticking).
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { GameEngine } from '../engine/GameEngine';
 import { loadContent } from '../engine/content/ContentLoader';
 import { PixiRenderer } from '../render/PixiRenderer';
@@ -11,6 +11,7 @@ import { createSessionState, type SessionState } from '../render/SessionState';
 import { TICK_MS } from '../types';
 import { UnitBar } from './UnitBar';
 import { PauseMenu } from './PauseMenu';
+import { EndScreen } from './EndScreen';
 import { compactButtonStyle } from './menuStyles';
 import { NodeInfoPanel } from './NodeInfoPanel';
 import { TutorialOverlay } from './TutorialOverlay';
@@ -39,6 +40,9 @@ export function GameView({ levelId }: GameViewProps) {
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
   const [tutorial, setTutorial] = useState<TutorialDef | null>(null);
   const [levelName, setLevelName] = useState<string>('');
+  // Win/loss status, polled from the engine so the React EndScreen overlay
+  // can show. 'playing' until WinConditionSystem flips it.
+  const [endStatus, setEndStatus] = useState<'playing' | 'won' | 'lost'>('playing');
   const tutorialOpenRef = useRef(false);
   const engineRefForMenu = useRef<GameEngine | null>(null);
   const sessionRef = useRef<SessionState | null>(null);
@@ -48,6 +52,15 @@ export function GameView({ levelId }: GameViewProps) {
   const startLevel = useSessionStore((s) => s.startLevel);
   const exitToMenu = useSessionStore((s) => s.exitToMenu);
   const recordCompletion = useProgressStore((s) => s.recordCompletion);
+
+  // Sorted level ids (cached) so the EndScreen knows whether a "Next level"
+  // exists. loadContent() is memoized internally; the useMemo just avoids
+  // re-deriving the array each render.
+  const availableLevels = useMemo(
+    () => Object.keys(loadContent().levels).map(Number).sort((a, b) => a - b),
+    [],
+  );
+  const nextLevel = nextLevelId(levelId, availableLevels);
 
   // Track pause via ref so the requestAnimationFrame closure sees the
   // current value without re-creating the entire effect.
@@ -71,6 +84,9 @@ export function GameView({ levelId }: GameViewProps) {
     let engineRef: GameEngine | null = null;
     let availableLevels: number[] = [];
     recordedRef.current = false;
+    // Fresh level (re)boot — clear any lingering win/loss overlay so a
+    // restart/next-level doesn't briefly flash the previous end screen.
+    setEndStatus('playing');
     // Restart the in-game song from the top on every level (re)boot —
     // covers initial entry, the R-key / pause-menu restart, and next-level.
     // Crossing back out to the menu is handled by App's setMusicScene.
@@ -81,6 +97,9 @@ export function GameView({ levelId }: GameViewProps) {
       if (tutorialOpenRef.current) return; // tutorial blocks all input
       const key = e.key.toLowerCase();
       if (key === 'escape') {
+        // No pausing once the level has resolved — the EndScreen owns the
+        // screen then (R / N still work as shortcuts below).
+        if (engineRef && engineRef.world.status !== 'playing') return;
         // Cancel spell-targeting first if active; otherwise pause.
         if (sessionRef.current && sessionRef.current.targetingFromLabId !== null) {
           sessionRef.current.targetingFromLabId = null;
@@ -167,11 +186,17 @@ export function GameView({ levelId }: GameViewProps) {
         const id = session.hoveredNodeId;
         setHoveredId((prev) => (prev === id ? prev : id));
       };
+      const pollStatus = (): void => {
+        const st = engineRef ? engineRef.world.status : 'playing';
+        setEndStatus((prev) => (prev === st ? prev : st));
+      };
       pushTotals();
       pollHover();
+      pollStatus();
       hudIntervalId = setInterval(() => {
         pushTotals();
         pollHover();
+        pollStatus();
       }, HUD_POLL_MS);
 
       let lastTime = performance.now();
@@ -257,7 +282,7 @@ export function GameView({ levelId }: GameViewProps) {
           }}
         />
       )}
-      {paused && (
+      {paused && endStatus === 'playing' && (
         <PauseMenu
           onResume={() => setPaused(false)}
           onRestart={() => {
@@ -266,7 +291,17 @@ export function GameView({ levelId }: GameViewProps) {
           }}
         />
       )}
-      {!paused && engineRefForMenu.current && sessionRef.current && (
+      {endStatus !== 'playing' && (
+        <EndScreen
+          status={endStatus}
+          levelName={levelName}
+          hasNext={nextLevel !== null}
+          onNext={() => { if (nextLevel !== null) startLevel(nextLevel); }}
+          onRestart={() => { setEndStatus('playing'); setRestartCounter((c) => c + 1); }}
+          onMenu={exitToMenu}
+        />
+      )}
+      {!paused && endStatus === 'playing' && engineRefForMenu.current && sessionRef.current && (
         <NodeInfoPanel
           engine={engineRefForMenu.current}
           session={sessionRef.current}

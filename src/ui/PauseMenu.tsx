@@ -1,12 +1,18 @@
 // PauseMenu — modal shown when the player presses Esc mid-game.
-// Engine stops ticking while open. v2.9.6: compact wooden buttons +
-// inline Music / SFX sliders so the player can tune audio without
-// leaving the game to visit Settings.
+// Engine stops ticking while open. v2.10.2: rendered on the themed
+// parchment scroll (matching TutorialOverlay / EndScreen) with wood
+// buttons + inline Music / SFX sliders so the player can tune audio
+// without leaving the game to visit Settings.
 
 import { useSessionStore } from '../store/sessionStore';
 import { useProgressStore } from '../store/progressStore';
 import { playSfx } from '../audio/sfxPlayer';
-import { cardStyle, compactButtonStyle, titleStyle } from './menuStyles';
+import {
+  compactButtonStyle,
+  parchmentBackdropStyle,
+  parchmentCardStyle,
+  parchmentTitleStyle,
+} from './menuStyles';
 
 interface PauseMenuProps {
   onResume: () => void;
@@ -21,19 +27,9 @@ export function PauseMenu({ onResume, onRestart }: PauseMenuProps) {
   const setSfxVolume = useProgressStore((s) => s.setSfxVolume);
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(6, 6, 10, 0.7)',
-        zIndex: 50,
-      }}
-    >
-      <div style={{ ...cardStyle, textAlign: 'center', minWidth: 280, maxWidth: 320 }}>
-        <div style={{ ...titleStyle, fontSize: 26, marginBottom: 14 }}>Paused</div>
+    <div style={parchmentBackdropStyle}>
+      <div style={parchmentCardStyle}>
+        <div style={parchmentTitleStyle}>Paused</div>
 
         <div style={sliderBlockStyle}>
           <Slider label="Music" value={musicVolume} onChange={setMusicVolume} />
@@ -66,8 +62,8 @@ function Slider({ label, value, onChange }: SliderProps) {
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-        <span style={{ fontSize: 12, color: '#bbc3cf' }}>{label}</span>
-        <span style={{ fontSize: 11, color: '#7a8090' }}>{Math.round(value * 100)}%</span>
+        <span style={{ fontSize: 13, color: '#4a3520', fontWeight: 700 }}>{label}</span>
+        <span style={{ fontSize: 12, color: '#7a5a32' }}>{Math.round(value * 100)}%</span>
       </div>
       <input
         type="range"
@@ -75,17 +71,17 @@ function Slider({ label, value, onChange }: SliderProps) {
         max={100}
         value={Math.round(value * 100)}
         onChange={(e) => onChange(Number.parseInt(e.target.value, 10) / 100)}
-        style={{ width: '100%' }}
+        style={{ width: '100%', accentColor: '#7a5a32' }}
       />
     </div>
   );
 }
 
 const sliderBlockStyle: React.CSSProperties = {
-  marginBottom: 14,
-  padding: '8px 4px',
-  borderTop: '1px solid rgba(120, 140, 180, 0.18)',
-  borderBottom: '1px solid rgba(120, 140, 180, 0.18)',
+  marginBottom: 16,
+  padding: '10px 4px',
+  borderTop: '1px solid rgba(90, 60, 30, 0.35)',
+  borderBottom: '1px solid rgba(90, 60, 30, 0.35)',
 };
 
 const buttonStackStyle: React.CSSProperties = {

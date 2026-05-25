@@ -19,6 +19,7 @@ import type { CSSProperties } from 'react';
 import buttonWoodUrl from '../render/sprites/ui/button-wood.png';
 import levelButtonUrl from '../render/sprites/ui/level-button.png';
 import menuBackgroundUrl from '../render/sprites/ui/menu-background.png';
+import parchmentUrl from '../render/sprites/ui/parchment-banner.png';
 
 // v2.10.1: game-wide theme font (IM Fell English, an antique printing-press
 // serif). Declared as @font-face in index.html and set on <body> so the DOM
@@ -307,4 +308,65 @@ export const cardStyle: CSSProperties = {
   padding: 24,
   minWidth: 360,
   maxWidth: 520,
+};
+
+// v2.10.2: shared parchment-scroll card (matches TutorialOverlay's look).
+// The painterly parchment-banner.png is 9-sliced with a horizontal-only
+// slice ('0 80 0 80 fill') so the wooden rollers stay fixed-size on the
+// left/right and the parchment center stretches to fit the content. Used
+// by PauseMenu + EndScreen (and conceptually by TutorialOverlay). Text on
+// the parchment is dark brown, so pair with parchmentTitleStyle /
+// parchmentBackdropStyle below — NOT the white-on-dark menu text styles.
+const PARCHMENT_SLICE = '0 80 0 80 fill';
+const PARCHMENT_BORDER = 60;
+
+export const parchmentBackdropStyle: CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(8, 10, 14, 0.78)',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 60,
+  fontFamily: THEME_FONT,
+};
+
+export const parchmentCardStyle: CSSProperties = {
+  width: 440,
+  maxWidth: '92vw',
+  padding: '34px 78px 30px 78px',
+  textAlign: 'center',
+  color: '#3a2a1a',
+  fontFamily: THEME_FONT,
+  background: 'transparent',
+  border: '0px solid transparent',
+  borderLeftWidth: `${PARCHMENT_BORDER}px`,
+  borderRightWidth: `${PARCHMENT_BORDER}px`,
+  borderImageSource: `url(${parchmentUrl})`,
+  borderImageSlice: PARCHMENT_SLICE,
+  borderImageWidth: `0 ${PARCHMENT_BORDER}px 0 ${PARCHMENT_BORDER}px`,
+  borderImageRepeat: 'stretch',
+  borderImageOutset: 0,
+  borderRadius: 0,
+  filter: 'drop-shadow(0 16px 32px rgba(0,0,0,0.55))',
+};
+
+export const parchmentTitleStyle: CSSProperties = {
+  fontFamily: THEME_FONT,
+  fontSize: 34,
+  fontWeight: 800,
+  margin: '0 0 6px',
+  color: '#3a2a1a',
+  letterSpacing: '0.02em',
+  textShadow: '0 1px 0 rgba(255, 240, 210, 0.45)',
+};
+
+export const parchmentKickerStyle: CSSProperties = {
+  fontSize: 11,
+  letterSpacing: '0.22em',
+  textTransform: 'uppercase',
+  color: '#7a5a32',
+  fontWeight: 700,
+  marginBottom: 4,
 };

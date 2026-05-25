@@ -107,7 +107,6 @@ export function LevelSelect() {
         padding: '4px 8px',
       }}>
         {sortedIds.map((id) => {
-          const lv = content.levels[id]!;
           const unlocked = isLevelUnlocked(id, sortedIds, completedLevels);
           const stars = completedLevels[id]?.stars ?? 0;
           return (
@@ -122,20 +121,13 @@ export function LevelSelect() {
                 cursor: unlocked ? 'pointer' : 'not-allowed',
               }}
             >
-              <span style={{ fontSize: 15, fontWeight: 800, lineHeight: 1 }}>{id}</span>
-              <span style={{
-                fontSize: 8,
-                color: '#f3e8d0',
-                textAlign: 'center',
-                lineHeight: 1.05,
-                wordBreak: 'break-word',
-                hyphens: 'auto',
-                maxWidth: '100%',
-              }}>{lv.name}</span>
-              <span style={{ fontSize: 9, color: '#f5c95b', letterSpacing: '0.06em', lineHeight: 1 }}>
+              {/* v2.10.2: tiles show just the big number + stars (level name
+                  removed — it crowded the small plaque). */}
+              <span style={{ fontSize: 28, fontWeight: 800, lineHeight: 1 }}>{id}</span>
+              <span style={{ fontSize: 12, color: '#f5c95b', letterSpacing: '0.06em', lineHeight: 1 }}>
                 {[0, 1, 2].map((i) => (i < stars ? STAR_FILLED : STAR_EMPTY)).join('')}
               </span>
-              {!unlocked && <span style={{ fontSize: 7, color: '#bbc3cf', lineHeight: 1 }}>locked</span>}
+              {!unlocked && <span style={{ fontSize: 8, color: '#bbc3cf', lineHeight: 1 }}>locked</span>}
             </button>
           );
         })}

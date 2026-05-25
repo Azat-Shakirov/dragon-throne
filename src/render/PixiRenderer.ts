@@ -1028,16 +1028,10 @@ export class PixiRenderer {
       this.lastWorldStatus = world.status;
     }
 
-    if (world.status === 'won') {
-      this.statusText.text = 'VICTORY\nR — retry   N — next';
-    } else if (world.status === 'lost') {
-      this.statusText.text = 'DEFEATED\nR — retry';
-    } else {
-      this.statusText.text = '';
-    }
-    if (this.statusText.text) {
-      this.statusText.position.set(this.app.renderer.width / 2, this.app.renderer.height / 2);
-    }
+    // v2.10.2: the win/loss message moved to the themed DOM EndScreen
+    // overlay (GameView). Keep the in-canvas statusText blank so the two
+    // don't double up; the SFX stinger above still fires on the transition.
+    if (this.statusText.text) this.statusText.text = '';
   }
 
   addClickRipple(x: number, y: number, nowMs: number): void {
