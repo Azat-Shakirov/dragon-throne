@@ -13,7 +13,9 @@
 import { create } from 'zustand';
 import type { ArchetypeId } from '../engine/content/ContentLibrary';
 
-export type Route = 'menu' | 'levelSelect' | 'battleRoyale' | 'settings' | 'credits' | 'game' | 'quit' | 'editor' | 'variantSandbox' | 'biomeSandbox' | 'unitSandbox' | 'wallSandbox';
+// v2.12.0: 'login' is the new initial route — the auth screen is shown before
+// the main menu (server-backed accounts + campaign-progress sync).
+export type Route = 'login' | 'menu' | 'levelSelect' | 'battleRoyale' | 'settings' | 'credits' | 'game' | 'quit' | 'editor' | 'variantSandbox' | 'biomeSandbox' | 'unitSandbox' | 'wallSandbox';
 
 // v2.11.0: which mode launched the current 'game' route.
 //  - 'campaign'     : a Campaign ladder level. Designer's player setup is
@@ -30,6 +32,10 @@ export type AIDifficulty = 'easy' | 'normal' | 'hard';
 
 interface SessionStore {
   route: Route;
+  // v2.12.0 — logged-in username (set by LoginScreen on auth success), or null
+  // when nobody is signed in. Display-only; the auth token itself lives in the
+  // api client module, never here.
+  currentUser: string | null;
   selectedLevelId: number | null;
   paused: boolean;
   // v2.11.0 — campaign vs battle-royale. GameView branches on this to
@@ -45,6 +51,7 @@ interface SessionStore {
   // v2.11.0 — chosen AI difficulty for the next Battle Royale match. Every
   // AI player on the BR map is forced to this personality.
   aiDifficulty: AIDifficulty;
+  setCurrentUser: (username: string | null) => void;
   navigate: (route: Route) => void;
   startLevel: (id: number) => void;
   startBattleRoyale: (id: number) => void;
@@ -56,12 +63,14 @@ interface SessionStore {
 }
 
 export const useSessionStore = create<SessionStore>((set) => ({
-  route: 'menu',
+  route: 'login',
+  currentUser: null,
   selectedLevelId: null,
   paused: false,
   gameMode: 'campaign',
   playerStartArchetype: null,
   aiDifficulty: 'normal',
+  setCurrentUser: (username) => set({ currentUser: username }),
   navigate: (route) => set({ route, paused: false }),
   startLevel: (id) => set({ route: 'game', selectedLevelId: id, paused: false, gameMode: 'campaign' }),
   startBattleRoyale: (id) => set({ route: 'game', selectedLevelId: id, paused: false, gameMode: 'battleRoyale' }),

@@ -335,7 +335,10 @@ export const parchmentBackdropStyle: CSSProperties = {
 export const parchmentCardStyle: CSSProperties = {
   width: 440,
   maxWidth: '92vw',
-  padding: '34px 78px 30px 78px',
+  // v2.12.0: more top padding seats content below the parchment's top curl
+  // (the sheet is biased low in the source art), and wider side padding keeps
+  // content off the rollers' inner curl (which stretches inward on wide cards).
+  padding: '52px 92px 44px 92px',
   textAlign: 'center',
   color: '#3a2a1a',
   fontFamily: THEME_FONT,

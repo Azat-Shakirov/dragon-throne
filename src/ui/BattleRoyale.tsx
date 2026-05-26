@@ -20,7 +20,9 @@ import {
   levelButtonStyle,
   screenStyle,
   titleStyle,
+  THEME_FONT,
 } from './menuStyles';
+import { fetchLeaderboard, type LeaderboardEntry, type LeaderboardView } from '../api/apiClient';
 import type { ArchetypeId, BiomeId, LevelDef } from '../engine/content/ContentLibrary';
 
 // Deterministic chip order (matches the retired LevelSelect picker).
@@ -49,6 +51,7 @@ export function BattleRoyale() {
   const setPlayerArchetype = useSessionStore((s) => s.setPlayerStartArchetype);
   const aiDifficulty = useSessionStore((s) => s.aiDifficulty);
   const setAIDifficulty = useSessionStore((s) => s.setAIDifficulty);
+  const currentUser = useSessionStore((s) => s.currentUser);
 
   const content = useMemo(() => loadContent(), []);
   const brMaps = useMemo(
@@ -107,8 +110,8 @@ export function BattleRoyale() {
             </div>
           </div>
 
-          {/* ── Right: preview + setup ────────────────────────────── */}
-          <div className="dt-noscroll" style={rightPaneStyle}>
+          {/* ── Center: preview + setup ───────────────────────────── */}
+          <div className="dt-noscroll" style={centerPaneStyle}>
             <MapPreview level={selectedLevel} />
             <div style={mapInfoStyle}>
               <div style={mapNameStyle}>{selectedLevel?.name ?? '—'}</div>
@@ -177,10 +180,94 @@ export function BattleRoyale() {
               {playerArchetype === null ? 'Pick a unit type' : 'Play'}
             </button>
           </div>
+
+          {/* ── Right: per-map leaderboard ────────────────────────── */}
+          <LeaderboardPanel mapId={selectedId} currentUser={currentUser} />
         </div>
       )}
     </div>
   );
+}
+
+// ── Leaderboard (right pane) ───────────────────────────────────────────
+// Fetches the selected map's top-10 (+ the player's personal best if below
+// the top 10) from the server whenever the selection changes.
+function LeaderboardPanel({ mapId, currentUser }: { mapId: number | null; currentUser: string | null }) {
+  const [view, setView] = useState<LeaderboardView | null>(null);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+
+  useEffect(() => {
+    if (mapId === null) {
+      setView(null);
+      setStatus('idle');
+      return;
+    }
+    let cancelled = false;
+    setStatus('loading');
+    fetchLeaderboard(String(mapId))
+      .then((v) => { if (!cancelled) { setView(v); setStatus('idle'); } })
+      .catch(() => { if (!cancelled) { setView(null); setStatus('error'); } });
+    return () => { cancelled = true; };
+  }, [mapId]);
+
+  return (
+    <div className="dt-noscroll" style={leaderboardPaneStyle}>
+      <div style={paneHeadingStyle}>Leaderboard</div>
+      {status === 'loading' ? (
+        <div style={lbMsgStyle}>Loading…</div>
+      ) : status === 'error' ? (
+        <div style={lbMsgStyle}>Leaderboard unavailable.<br />Is the server running?</div>
+      ) : !view || view.entries.length === 0 ? (
+        <div style={lbMsgStyle}>No scores yet.<br />Be the first to claim this map.</div>
+      ) : (
+        <div className="dt-noscroll" style={lbScrollStyle}>
+          <div style={{ ...lbRowStyle, ...lbHeaderRowStyle }}>
+            <span style={colRank}>#</span>
+            <span style={colName}>Player</span>
+            <span style={colScore}>Score</span>
+            <span style={colTime}>Time</span>
+            <span style={colDiff}>AI</span>
+          </div>
+          {view.entries.map((e, i) => (
+            <LbRow key={`top-${i}`} entry={e} highlight={isMine(e, currentUser)} />
+          ))}
+          {view.myBest && (
+            <>
+              <div style={lbDividerStyle} />
+              <LbRow entry={view.myBest} highlight />
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LbRow({ entry, highlight }: { entry: LeaderboardEntry; highlight: boolean }) {
+  return (
+    <div style={{ ...lbRowStyle, ...(highlight ? lbRowMineStyle : null) }}>
+      <span style={colRank}>{entry.rank}</span>
+      <span style={{ ...colName, fontWeight: highlight ? 800 : 600 }}>{entry.username}</span>
+      <span style={colScore}>{entry.score.toLocaleString()}</span>
+      <span style={colTime}>{formatTime(entry.elapsedMs)}</span>
+      <span style={colDiff}>{capitalize(entry.difficulty)}</span>
+    </div>
+  );
+}
+
+function isMine(entry: LeaderboardEntry, currentUser: string | null): boolean {
+  return currentUser !== null && entry.username === currentUser;
+}
+
+function formatTime(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function capitalize(s: string): string {
+  return s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 // ── Minimap preview ───────────────────────────────────────────────────
@@ -284,10 +371,10 @@ const subtitleStyle: React.CSSProperties = {
 
 const layoutStyle: React.CSSProperties = {
   display: 'flex',
-  gap: 20,
+  gap: 18,
   alignItems: 'stretch',
-  width: '92vw',
-  maxWidth: 1180,
+  width: '95vw',
+  maxWidth: 1340,
   maxHeight: '74vh',
 };
 
@@ -308,7 +395,7 @@ const leftPaneStyle: React.CSSProperties = {
   minHeight: 0,
 };
 
-const rightPaneStyle: React.CSSProperties = {
+const centerPaneStyle: React.CSSProperties = {
   ...panelBaseStyle,
   flex: 1,
   display: 'flex',
@@ -317,6 +404,73 @@ const rightPaneStyle: React.CSSProperties = {
   minWidth: 0,
   overflowY: 'auto',
 };
+
+// v2.12.0: right pane — the per-map leaderboard.
+const leaderboardPaneStyle: React.CSSProperties = {
+  ...panelBaseStyle,
+  width: 320,
+  flexShrink: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: 0,
+};
+
+const lbMsgStyle: React.CSSProperties = {
+  fontSize: 13,
+  color: '#aeb5c2',
+  textAlign: 'center',
+  padding: '18px 8px',
+  lineHeight: 1.55,
+  fontStyle: 'italic',
+};
+
+const lbScrollStyle: React.CSSProperties = {
+  overflowY: 'auto',
+  width: '100%',
+  minHeight: 0,
+};
+
+const lbRowStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '24px 1fr 54px 48px 46px',
+  alignItems: 'center',
+  gap: 6,
+  padding: '4px 6px',
+  fontSize: 12.5,
+  color: '#e6ddc9',
+  borderRadius: 4,
+  fontFamily: THEME_FONT,
+};
+
+const lbHeaderRowStyle: React.CSSProperties = {
+  fontSize: 9.5,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: '#e9c873',
+  fontWeight: 700,
+  borderBottom: '1px solid rgba(245, 201, 91, 0.3)',
+  borderRadius: 0,
+  position: 'sticky',
+  top: 0,
+  background: 'rgba(16, 14, 22, 0.96)',
+};
+
+const lbRowMineStyle: React.CSSProperties = {
+  background: 'rgba(245, 201, 91, 0.16)',
+  boxShadow: 'inset 0 0 0 1px rgba(245, 201, 91, 0.4)',
+};
+
+const lbDividerStyle: React.CSSProperties = {
+  height: 1,
+  background: 'rgba(245, 201, 91, 0.3)',
+  margin: '6px 4px',
+};
+
+const colRank: React.CSSProperties = { textAlign: 'center', fontWeight: 700, color: '#e9c873' };
+const colName: React.CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
+const colScore: React.CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums' };
+const colTime: React.CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums' };
+const colDiff: React.CSSProperties = { textAlign: 'right', color: '#aeb5c2', fontSize: 11 };
 
 const paneHeadingStyle: React.CSSProperties = {
   fontSize: 11,

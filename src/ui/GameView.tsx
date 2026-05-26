@@ -24,6 +24,7 @@ import { useHudStore } from '../store/hudStore';
 import { useSessionStore, type AIDifficulty } from '../store/sessionStore';
 import { useProgressStore } from '../store/progressStore';
 import { computePlayerTotals } from '../store/computeTotals';
+import { submitLeaderboard } from '../api/apiClient';
 
 const MAX_FRAME_MS = 250;
 const HUD_POLL_MS = 100;
@@ -54,7 +55,6 @@ export function GameView({ levelId }: GameViewProps) {
   const togglePause = useSessionStore((s) => s.togglePause);
   const startLevel = useSessionStore((s) => s.startLevel);
   const exitToMenu = useSessionStore((s) => s.exitToMenu);
-  const navigate = useSessionStore((s) => s.navigate);
   // v2.11.0: campaign vs battle-royale. BR matches apply the player's
   // chosen archetype + difficulty overrides, never record campaign
   // progress, and have no "next level" (each map is a standalone skirmish).
@@ -225,19 +225,26 @@ export function GameView({ levelId }: GameViewProps) {
           }
         }
 
-        if (
-          engine.world.status === 'won' &&
-          !recordedRef.current &&
-          // v2.11.0: Battle Royale wins are skirmish-only — never unlock
-          // campaign levels or record stars.
-          useSessionStore.getState().gameMode === 'campaign'
-        ) {
+        if (engine.world.status !== 'playing' && !recordedRef.current) {
           recordedRef.current = true;
-          recordCompletion(levelId, {
-            stars: 1,
-            bestTimeMs: Math.round(engine.world.elapsedMs),
-            unitsLost: 0,
-          });
+          const won = engine.world.status === 'won';
+          const elapsedMs = Math.round(engine.world.elapsedMs);
+          if (useSessionStore.getState().gameMode === 'campaign') {
+            // Campaign: only a win records progress; push it to the server
+            // (no-op if not authenticated, e.g. a DEV ?level= jump).
+            if (won) {
+              recordCompletion(levelId, { stars: 1, bestTimeMs: elapsedMs, unitsLost: 0 });
+              void useProgressStore.getState().saveProgressToServer();
+            }
+          } else {
+            // Battle Royale: submit a leaderboard score on win OR loss. A loss
+            // scores 0; a win scores by the formula (a negative result floors
+            // to 100). The leaderboard itself is shown on the BR setup page.
+            const difficulty = useSessionStore.getState().aiDifficulty;
+            const score = won ? computeBattleRoyaleScore(elapsedMs, difficulty) : 0;
+            void submitLeaderboard(String(levelId), { score, elapsedMs, difficulty })
+              .catch((err) => console.warn('[leaderboard] submit failed:', err));
+          }
         }
 
         const alpha = blockTick ? 0 : accumulator / TICK_MS;
@@ -315,8 +322,9 @@ export function GameView({ levelId }: GameViewProps) {
           hasNext={!isBattleRoyale && nextLevel !== null}
           onNext={() => { if (!isBattleRoyale && nextLevel !== null) startLevel(nextLevel); }}
           onRestart={() => { setEndStatus('playing'); setRestartCounter((c) => c + 1); }}
-          onMenu={isBattleRoyale ? () => navigate('battleRoyale') : exitToMenu}
-          menuLabel={isBattleRoyale ? 'Battle Royale' : 'Main menu'}
+          // Both campaign and Battle Royale end screens return to the main menu.
+          onMenu={exitToMenu}
+          menuLabel="Main menu"
         />
       )}
       {!paused && endStatus === 'playing' && engineRefForMenu.current && sessionRef.current && (
@@ -353,6 +361,19 @@ function nextLevelId(current: number, available: number[]): number | null {
   const idx = available.indexOf(current);
   if (idx === -1 || idx + 1 >= available.length) return null;
   return available[idx + 1] ?? null;
+}
+
+// v2.12.0: Battle Royale WIN score. Faster wins score higher; an easier AI
+// subtracts more per second, so beating a harder AI preserves more points.
+//   difficulty time-multiplier = easy 2 / normal 1.5 / hard 1
+//   score = round(1000 - elapsedSeconds * multiplier)
+// A win whose computed score goes negative (a very slow win) floors to a
+// fixed 100 — so any win still beats a loss (which submits 0). The server
+// stores whatever score the client submits.
+function computeBattleRoyaleScore(elapsedMs: number, difficulty: AIDifficulty): number {
+  const multiplier = difficulty === 'easy' ? 2 : difficulty === 'normal' ? 1.5 : 1;
+  const score = Math.round(1000 - (elapsedMs / 1000) * multiplier);
+  return score < 0 ? 100 : score;
 }
 
 // v2.11.0: returns a shallow-cloned LevelDef set up for a Battle Royale

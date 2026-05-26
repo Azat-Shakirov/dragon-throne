@@ -3,7 +3,12 @@
 // PauseMenu / TutorialOverlay). Victory offers Next Level (when one
 // exists) + Restart + Main Menu; Defeat offers Restart + Main Menu
 // (no "next" — you didn't win it).
+//
+// v2.12.0: the Battle Royale leaderboard was MOVED OUT of this screen onto
+// the Battle Royale setup page; both campaign and BR end screens now just
+// offer Restart + Main menu (BR has no "next level").
 
+import type { CSSProperties } from 'react';
 import { playSfx } from '../audio/sfxPlayer';
 import {
   buttonStyle,
@@ -20,8 +25,7 @@ interface EndScreenProps {
   onNext: () => void;
   onRestart: () => void;
   onMenu: () => void;
-  // v2.11.0: label for the bottom nav button. Campaign uses "Main menu";
-  // Battle Royale uses "Battle Royale" (returns to the map picker).
+  // Label for the bottom nav button (defaults to "Main menu").
   menuLabel?: string;
 }
 
@@ -55,14 +59,14 @@ export function EndScreen({ status, levelName, hasNext, onNext, onRestart, onMen
   );
 }
 
-const subtitleStyle: React.CSSProperties = {
+const subtitleStyle: CSSProperties = {
   fontSize: 14,
   color: '#4a3520',
   marginBottom: 22,
   textShadow: '0 1px 0 rgba(255, 240, 210, 0.3)',
 };
 
-const buttonStackStyle: React.CSSProperties = {
+const buttonStackStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',

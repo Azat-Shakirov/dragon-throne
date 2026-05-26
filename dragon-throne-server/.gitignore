@@ -1,0 +1,11 @@
+# Maven build output (the repackaged fat jar lives here; rebuild with `mvn package`).
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db

@@ -7,6 +7,7 @@ import { useSessionStore } from './store/sessionStore';
 import { useProgressStore } from './store/progressStore';
 import { initMusicPlayer, setMusicVolume, setMusicScene } from './audio/musicPlayer';
 import { initSfxPlayer, setSfxVolume } from './audio/sfxPlayer';
+import { LoginScreen } from './ui/LoginScreen';
 import { MainMenu } from './ui/MainMenu';
 import { LevelSelect } from './ui/LevelSelect';
 import { BattleRoyale } from './ui/BattleRoyale';
@@ -79,6 +80,8 @@ export default function App() {
   }, [startLevel, navigate]);
 
   switch (route) {
+    case 'login':
+      return <LoginScreen />;
     case 'menu':
       return <MainMenu />;
     case 'levelSelect':
